@@ -28,7 +28,7 @@ const LoginPage: React.FC = () => {
     setIsLoading(true)
 
     try {
-      const response = await http.get<LoginResponse>("/oauth2/mock/login")
+      const response = await http.get<LoginResponse>("/mock/login")
       const data = response.data
 
       if (data?.code === 0) {
