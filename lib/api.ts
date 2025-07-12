@@ -1,246 +1,122 @@
-// API utility functions for prompt and business config management
+import { http } from "@/lib/http"
+import type { Result, Profile } from "@/lib/types/user"
 
-export interface PromptVersionVO {
-  id: number
-  label: string
-  content: string
-  system_content: string
-  temperature: number
-  top_n: number
-  max_tokens: number
-  status: number
-  ctime: number
-  utime: number
+// 用户相关 API
+export const userApi = {
+  // 获取当前用户信息
+  getCurrentUser: async (): Promise<Result<Profile>> => {
+    const response = await http.get<Result<Profile>>("/api/user/profile")
+    return response.data
+  },
+
+  // 登录
+  login: async (username: string, password: string): Promise<Result<Profile>> => {
+    const response = await http.post<Result<Profile>>("/api/auth/login", {
+      username,
+      password,
+    })
+    return response.data
+  },
+
+  // 登出
+  logout: async (): Promise<Result<null>> => {
+    const response = await http.post<Result<null>>("/api/auth/logout")
+    return response.data
+  },
 }
 
-export interface CreatePromptRequest {
-  label: string
-  content: string
-  system_content: string
-  temperature: number
-  top_n: number
-  max_tokens: number
-  status: number
+// 业务配置相关 API
+export const bizConfigApi = {
+  // 获取业务配置列表
+  getList: async (): Promise<Result<any[]>> => {
+    const response = await http.get<Result<any[]>>("/api/biz-config")
+    return response.data
+  },
+
+  // 获取单个业务配置
+  getById: async (id: string): Promise<Result<any>> => {
+    const response = await http.get<Result<any>>(`/api/biz-config/${id}`)
+    return response.data
+  },
+
+  // 创建业务配置
+  create: async (data: any): Promise<Result<any>> => {
+    const response = await http.post<Result<any>>("/api/biz-config", data)
+    return response.data
+  },
+
+  // 更新业务配置
+  update: async (id: string, data: any): Promise<Result<any>> => {
+    const response = await http.put<Result<any>>(`/api/biz-config/${id}`, data)
+    return response.data
+  },
+
+  // 删除业务配置
+  delete: async (id: string): Promise<Result<null>> => {
+    const response = await http.delete<Result<null>>(`/api/biz-config/${id}`)
+    return response.data
+  },
 }
 
-export interface UpdatePromptRequest extends CreatePromptRequest {
-  id: number
-}
+// 提示词相关 API
+export const promptApi = {
+  // 获取提示词列表
+  getList: async (): Promise<Result<any[]>> => {
+    const response = await http.get<Result<any[]>>("/api/prompts")
+    return response.data
+  },
 
-export interface DeletePromptRequest {
-  id: number
-}
+  // 获取单个提示词
+  getById: async (id: string): Promise<Result<any>> => {
+    const response = await http.get<Result<any>>(`/api/prompts/${id}`)
+    return response.data
+  },
 
-// Business Configuration API types
-export interface BizConfig {
-  id: number
-  name: string
-  ownerID: number
-  ownerType: "user" | "organization"
-  config: string
-}
+  // 创建提示词
+  create: async (data: any): Promise<Result<any>> => {
+    const response = await http.post<Result<any>>("/api/prompts", data)
+    return response.data
+  },
 
-export interface CreateBizConfigRequest {
-  name: string
-  ownerID: number
-  ownerType: "user" | "organization"
-  config: string
-}
+  // 更新提示词
+  update: async (id: string, data: any): Promise<Result<any>> => {
+    const response = await http.put<Result<any>>(`/api/prompts/${id}`, data)
+    return response.data
+  },
 
-export interface UpdateBizConfigRequest {
-  id: number
-  name: string
-  ownerID: number
-  ownerType: "user" | "organization"
-  config: string
-}
+  // 删除提示词
+  delete: async (id: string): Promise<Result<null>> => {
+    const response = await http.delete<Result<null>>(`/api/prompts/${id}`)
+    return response.data
+  },
 
-export interface DeleteBizConfigRequest {
-  id: number
-}
+  // 获取提示词版本列表
+  getVersions: async (promptId: string): Promise<Result<any[]>> => {
+    const response = await http.get<Result<any[]>>(`/api/prompts/${promptId}/versions`)
+    return response.data
+  },
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080"
+  // 获取单个版本
+  getVersionById: async (promptId: string, versionId: string): Promise<Result<any>> => {
+    const response = await http.get<Result<any>>(`/api/prompts/${promptId}/versions/${versionId}`)
+    return response.data
+  },
 
-// Prompt API functions
-export async function createPrompt(data: CreatePromptRequest): Promise<PromptVersionVO> {
-  const response = await fetch(`${API_BASE_URL}/prompt/add`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  })
+  // 创建新版本
+  createVersion: async (promptId: string, data: any): Promise<Result<any>> => {
+    const response = await http.post<Result<any>>(`/api/prompts/${promptId}/versions`, data)
+    return response.data
+  },
 
-  if (!response.ok) {
-    throw new Error("Failed to create prompt")
-  }
+  // 更新版本
+  updateVersion: async (promptId: string, versionId: string, data: any): Promise<Result<any>> => {
+    const response = await http.put<Result<any>>(`/api/prompts/${promptId}/versions/${versionId}`, data)
+    return response.data
+  },
 
-  return response.json()
-}
-
-export async function getPrompt(id: number): Promise<PromptVersionVO> {
-  const response = await fetch(`${API_BASE_URL}/prompt/${id}`)
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch prompt")
-  }
-
-  return response.json()
-}
-
-export async function updatePrompt(data: UpdatePromptRequest): Promise<PromptVersionVO> {
-  const response = await fetch(`${API_BASE_URL}/prompt/update`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  })
-
-  if (!response.ok) {
-    throw new Error("Failed to update prompt")
-  }
-
-  return response.json()
-}
-
-export async function updatePromptVersion(data: UpdatePromptRequest): Promise<PromptVersionVO> {
-  const response = await fetch(`${API_BASE_URL}/prompt/update/version`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  })
-
-  if (!response.ok) {
-    throw new Error("Failed to update prompt version")
-  }
-
-  return response.json()
-}
-
-export async function deletePrompt(data: DeletePromptRequest): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/prompt/delete`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  })
-
-  if (!response.ok) {
-    throw new Error("Failed to delete prompt")
-  }
-}
-
-export async function deletePromptVersion(data: DeletePromptRequest): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/prompt/delete/version`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  })
-
-  if (!response.ok) {
-    throw new Error("Failed to delete prompt version")
-  }
-}
-
-export async function publishPrompt(data: DeletePromptRequest): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/prompt/publish`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  })
-
-  if (!response.ok) {
-    throw new Error("Failed to publish prompt")
-  }
-}
-
-export async function forkPrompt(data: DeletePromptRequest): Promise<PromptVersionVO> {
-  const response = await fetch(`${API_BASE_URL}/prompt/fork`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  })
-
-  if (!response.ok) {
-    throw new Error("Failed to fork prompt")
-  }
-
-  return response.json()
-}
-
-// Business Configuration API functions
-export async function createBizConfig(data: CreateBizConfigRequest): Promise<BizConfig> {
-  const response = await fetch(`${API_BASE_URL}/biz-config/add`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  })
-
-  if (!response.ok) {
-    throw new Error("Failed to create business configuration")
-  }
-
-  return response.json()
-}
-
-export async function getBizConfig(id: number): Promise<BizConfig> {
-  const response = await fetch(`${API_BASE_URL}/biz-config/${id}`)
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch business configuration")
-  }
-
-  return response.json()
-}
-
-export async function updateBizConfig(data: UpdateBizConfigRequest): Promise<BizConfig> {
-  const response = await fetch(`${API_BASE_URL}/biz-config/update`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  })
-
-  if (!response.ok) {
-    throw new Error("Failed to update business configuration")
-  }
-
-  return response.json()
-}
-
-export async function deleteBizConfig(data: DeleteBizConfigRequest): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/biz-config/delete`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  })
-
-  if (!response.ok) {
-    throw new Error("Failed to delete business configuration")
-  }
-}
-
-export async function listBizConfigs(): Promise<BizConfig[]> {
-  const response = await fetch(`${API_BASE_URL}/biz-config/list`)
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch business configurations")
-  }
-
-  return response.json()
+  // 删除版本
+  deleteVersion: async (promptId: string, versionId: string): Promise<Result<null>> => {
+    const response = await http.delete<Result<null>>(`/api/prompts/${promptId}/versions/${versionId}`)
+    return response.data
+  },
 }

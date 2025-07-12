@@ -1,116 +1,164 @@
 "use client"
 
 import type React from "react"
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Loader2, LogIn, User } from "lucide-react"
-import { http } from "@/lib/http"
-import type { LoginResponse } from "@/lib/types/user"
-import { setUserInfo, setAuthToken, markLogin } from "@/lib/utils/user"
-import { useToast } from "@/hooks/use-toast"
 
-const LoginPage: React.FC = () => {
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { useToast } from "@/hooks/use-toast"
+import { http } from "@/lib/http"
+import { saveUserInfo } from "@/lib/utils/user"
+import type { LoginResponse } from "@/lib/types/user"
+
+export default function LoginPage() {
+  const [username, setUsername] = useState("")
+  const [password, setPassword] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
-  const [isLoading, setIsLoading] = useState(false)
-  const [autoLogin, setAutoLogin] = useState(false)
 
-  // 自动登录逻辑
-  useEffect(() => {
-    if (autoLogin) {
-      handleMockLogin()
-    }
-  }, [autoLogin])
-
-  const handleMockLogin = async () => {
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
     setIsLoading(true)
 
     try {
-      const response = await http.get<LoginResponse>("/mock/login")
-      const data = response.data
+      const response = await http.post<LoginResponse>("/api/auth/login", {
+        username,
+        password,
+      })
 
-      if (data?.code === 0) {
-        const { profile, token } = data.data
+      const result = response.data
 
-        // 保存用户信息和 token
-        setUserInfo(profile)
-        setAuthToken(token)
-        markLogin()
+      if (result.code === 0) {
+        // 登录成功
+        saveUserInfo(result.data)
 
         toast({
           title: "登录成功",
-          description: `欢迎回来，${profile.username}！`,
+          description: `欢迎回来，${result.data.nickname}！`,
+          variant: "default",
         })
 
-        // 跳转到主页面
+        // 跳转到仪表板
         router.push("/dashboard")
-        router.refresh()
       } else {
+        // 登录失败
         toast({
           title: "登录失败",
-          description: data?.message || "登录失败，请重试",
+          description: result.msg,
           variant: "destructive",
         })
       }
     } catch (error) {
-      // 错误已经在 http 拦截器中处理了
       console.error("Login error:", error)
+      toast({
+        title: "登录失败",
+        description: "网络错误，请重试",
+        variant: "destructive",
+      })
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleManualLogin = () => {
-    handleMockLogin()
+  const handleAutoLogin = async () => {
+    setIsLoading(true)
+
+    try {
+      // 模拟自动登录
+      const mockProfile = {
+        id: 1,
+        nickname: "模拟用户",
+        avatar: "",
+      }
+
+      saveUserInfo(mockProfile)
+
+      toast({
+        title: "自动登录成功",
+        description: `欢迎回来，${mockProfile.nickname}！`,
+        variant: "default",
+      })
+
+      // 跳转到仪表板
+      router.push("/dashboard")
+    } catch (error) {
+      console.error("Auto login error:", error)
+      toast({
+        title: "自动登录失败",
+        description: "请手动登录",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  // 页面加载时自动触发登录
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setAutoLogin(true)
-    }, 1000) // 1秒后自动登录
-
-    return () => clearTimeout(timer)
-  }, [])
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
-            <User className="h-6 w-6 text-blue-600" />
-          </div>
-          <CardTitle className="text-2xl font-bold">AI 管理后台</CardTitle>
-          <CardDescription>模拟登录系统</CardDescription>
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold text-center">登录</CardTitle>
+          <CardDescription className="text-center">输入您的凭据以访问您的账户</CardDescription>
         </CardHeader>
-
         <CardContent className="space-y-4">
-          {isLoading ? (
-            <div className="text-center py-8">
-              <Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-600" />
-              <p className="mt-4 text-sm text-muted-foreground">{autoLogin ? "正在自动登录..." : "登录中..."}</p>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="username">用户名</Label>
+              <Input
+                id="username"
+                type="text"
+                placeholder="请输入用户名"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+              />
             </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="text-center py-4">
-                <p className="text-sm text-muted-foreground mb-4">点击下方按钮进行模拟登录</p>
-                <Button onClick={handleManualLogin} className="w-full" size="lg">
-                  <LogIn className="mr-2 h-4 w-4" />
-                  模拟登录
-                </Button>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">密码</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="请输入密码"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "登录中..." : "登录"}
+            </Button>
+          </form>
 
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">这是一个模拟登录页面，用于开发和测试</p>
-              </div>
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
             </div>
-          )}
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">或者</span>
+            </div>
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full bg-transparent"
+            onClick={handleAutoLogin}
+            disabled={isLoading}
+          >
+            {isLoading ? "登录中..." : "自动登录（演示）"}
+          </Button>
+
+          <div className="text-center text-sm text-gray-600">
+            <p>演示账户：</p>
+            <p>用户名：admin</p>
+            <p>密码：password</p>
+          </div>
         </CardContent>
       </Card>
     </div>
   )
 }
-
-export default LoginPage

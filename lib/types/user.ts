@@ -1,26 +1,13 @@
-// 用户相关类型定义
-
-export interface Profile {
-  id: string
-  username: string
-  email: string
-  avatar?: string
-  role: string
-  createdAt: string
-  updatedAt: string
-}
-
-export interface LoginResponse {
+export interface Result<T> {
   code: number
-  message: string
-  data: {
-    profile: Profile
-    token: string
-  }
-}
-
-export interface ApiResponse<T = any> {
-  code: number
-  message: string
+  msg: string
   data: T
 }
+
+export interface Profile {
+  id: number
+  avatar: string
+  nickname: string
+}
+
+export type LoginResponse = Result<Profile>

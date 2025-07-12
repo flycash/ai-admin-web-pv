@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from "axios"
+import { toast } from "@/hooks/use-toast"
 
 // 创建 axios 实例
 const instance: AxiosInstance = axios.create({
@@ -7,19 +8,12 @@ const instance: AxiosInstance = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  withCredentials: true, // 启用 cookie 传递
 })
 
 // 请求拦截器
 instance.interceptors.request.use(
   (config) => {
-    // 从 localStorage 获取 token
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem("auth_token")
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`
-      }
-    }
-
     console.log("HTTP Request:", {
       method: config.method?.toUpperCase(),
       url: config.url,
@@ -56,9 +50,8 @@ instance.interceptors.response.use(
 
     // 处理 401 未授权错误
     if (error.response?.status === 401) {
-      // 清除本地存储的认证信息
+      // 清除本地存储的用户信息
       if (typeof window !== "undefined") {
-        localStorage.removeItem("auth_token")
         localStorage.removeItem("user_info")
         localStorage.removeItem("is_logged_in")
 
@@ -69,13 +62,14 @@ instance.interceptors.response.use(
 
     // 显示错误提示
     if (typeof window !== "undefined") {
-      const errorMessage = error.response?.data?.message || error.message || "请求失败"
+      const errorMessage = error.response?.data?.msg || error.message || "请求失败"
 
-      // 简单的错误提示，实际项目中应该使用 toast 组件
-      console.error("API Error:", errorMessage)
-
-      // 可以在这里集成 toast 通知
-      // toast({ title: "错误", description: errorMessage, variant: "destructive" })
+      // 使用 toast 组件显示错误
+      toast({
+        title: "请求错误",
+        description: errorMessage,
+        variant: "destructive",
+      })
     }
 
     return Promise.reject(error)
