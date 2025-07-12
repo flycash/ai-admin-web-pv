@@ -134,6 +134,10 @@ export function BizConfigForm({ id }: BizConfigFormProps) {
         <Button variant="ghost" size="icon" onClick={() => router.back()}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
+        <div>
+          <h1 className="text-3xl font-bold">{id ? "编辑业务配置" : "创建业务配置"}</h1>
+          <p className="text-muted-foreground">{id ? "更新业务配置设置" : "为所有者配置业务设置"}</p>
+        </div>
       </div>
 
       <Form {...form}>

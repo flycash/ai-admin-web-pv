@@ -1,4 +1,4 @@
-import { BizConfigDetail } from "@/components/biz-config-detail"
+import { BizConfigDetail } from "../components/biz-config-detail"
 
 interface BizConfigDetailPageProps {
   params: {

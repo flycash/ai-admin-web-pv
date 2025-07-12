@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { PlusIcon } from "lucide-react"
 import Link from "next/link"
-import { BizConfigTable } from "@/components/biz-config-table"
+import { BizConfigTable } from "./components/biz-config-table"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function BizConfigPage() {

@@ -21,22 +21,21 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
-import { useI18n } from "@/lib/i18n/context"
 
 // Mock data - in real app, fetch from API
 const mockPrompt: PromptVO = {
   id: 1,
-  name: "Text Summarization",
+  name: "文本摘要",
   owner: 1,
   owner_type: "user",
   active_version: 2,
-  description: "A prompt for summarizing long text into concise points",
+  description: "用于将长文本总结为简洁要点的提示词",
   versions: [
     {
       id: 1,
       label: "v1.0",
-      content: "Summarize the following text:\n\n{{text}}",
-      system_content: "You are a helpful assistant that specializes in text summarization.",
+      content: "总结以下文本：\n\n{{text}}",
+      system_content: "你是一个专门从事文本摘要的有用助手。",
       temperature: 0.7,
       top_n: 0.9,
       max_tokens: 500,
@@ -47,8 +46,8 @@ const mockPrompt: PromptVO = {
     {
       id: 2,
       label: "v1.1",
-      content: "Summarize the following text in bullet points:\n\n{{text}}",
-      system_content: "You are a helpful assistant that specializes in text summarization.",
+      content: "用要点形式总结以下文本：\n\n{{text}}",
+      system_content: "你是一个专门从事文本摘要的有用助手。",
       temperature: 0.7,
       top_n: 0.9,
       max_tokens: 500,
@@ -58,9 +57,9 @@ const mockPrompt: PromptVO = {
     },
     {
       id: 3,
-      label: "v1.2-draft",
-      content: "Please provide a comprehensive summary of the following text in bullet points:\n\n{{text}}",
-      system_content: "You are a helpful assistant that specializes in text summarization. Focus on key points.",
+      label: "v1.2-草稿",
+      content: "请用要点形式提供以下文本的全面摘要：\n\n{{text}}",
+      system_content: "你是一个专门从事文本摘要的有用助手。专注于关键点。",
       temperature: 0.6,
       top_n: 0.85,
       max_tokens: 600,
@@ -80,7 +79,6 @@ interface PromptDetailProps {
 export function PromptDetail({ id }: PromptDetailProps) {
   const router = useRouter()
   const { toast } = useToast()
-  const { t } = useI18n()
   const [prompt, setPrompt] = useState<PromptVO | null>(null)
   const [isForking, setIsForking] = useState<number | null>(null)
   const [isPublishing, setIsPublishing] = useState<number | null>(null)
@@ -97,11 +95,8 @@ export function PromptDetail({ id }: PromptDetailProps) {
         active_version: versionId,
       })
       toast({
-        title: t("notifications.versionActivated"),
-        description: t("notifications.versionActivatedDesc").replace(
-          "{label}",
-          prompt.versions.find((v) => v.id === versionId)?.label || "",
-        ),
+        title: "版本已激活",
+        description: `版本 ${prompt.versions.find((v) => v.id === versionId)?.label || ""} 已激活`,
       })
     }
   }
@@ -114,8 +109,8 @@ export function PromptDetail({ id }: PromptDetailProps) {
         versions: updatedVersions,
       })
       toast({
-        title: t("common.delete"),
-        description: t("notifications.versionUpdatedDesc"),
+        title: "删除成功",
+        description: "版本已删除",
       })
     }
   }
@@ -136,7 +131,7 @@ export function PromptDetail({ id }: PromptDetailProps) {
       const newVersion: PromptVersionVO = {
         ...version,
         id: newVersionId,
-        label: `${version.label}-fork`,
+        label: `${version.label}-分支`,
         status: 0, // Set as draft
         ctime: Date.now(),
         utime: Date.now(),
@@ -150,14 +145,14 @@ export function PromptDetail({ id }: PromptDetailProps) {
       })
 
       toast({
-        title: t("notifications.versionForked"),
-        description: t("notifications.versionForkedDesc").replace("{label}", newVersion.label),
+        title: "版本已分支",
+        description: `版本 ${newVersion.label} 已创建`,
       })
     } catch (error) {
       console.error("Error forking version:", error)
       toast({
-        title: t("notifications.forkFailed"),
-        description: t("notifications.forkFailedDesc"),
+        title: "分支失败",
+        description: "创建分支版本失败",
         variant: "destructive",
       })
     } finally {
@@ -186,14 +181,14 @@ export function PromptDetail({ id }: PromptDetailProps) {
       })
 
       toast({
-        title: t("notifications.versionPublished"),
-        description: t("notifications.versionPublishedDesc").replace("{label}", version.label),
+        title: "版本已发布",
+        description: `版本 ${version.label} 已发布`,
       })
     } catch (error) {
       console.error("Error publishing version:", error)
       toast({
-        title: t("notifications.publishFailed"),
-        description: t("notifications.publishFailedDesc"),
+        title: "发布失败",
+        description: "发布版本失败",
         variant: "destructive",
       })
     } finally {
@@ -202,7 +197,7 @@ export function PromptDetail({ id }: PromptDetailProps) {
   }
 
   if (!prompt) {
-    return <div>{t("common.loading")}</div>
+    return <div>加载中...</div>
   }
 
   return (
@@ -219,13 +214,13 @@ export function PromptDetail({ id }: PromptDetailProps) {
           <Button asChild>
             <Link href={`/dashboard/prompts/${prompt.id}/versions/new`}>
               <Plus className="mr-2 h-4 w-4" />
-              {t("version.newVersion")}
+              新建版本
             </Link>
           </Button>
           <Button variant="outline" asChild>
             <Link href={`/dashboard/prompts/${prompt.id}/edit`}>
               <Edit2 className="mr-2 h-4 w-4" />
-              {t("common.edit")}
+              编辑
             </Link>
           </Button>
         </div>
@@ -234,7 +229,7 @@ export function PromptDetail({ id }: PromptDetailProps) {
       <div className="grid gap-6 md:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">{t("common.version") + "s"}</CardTitle>
+            <CardTitle className="text-sm">版本数</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{prompt.versions.length}</div>
@@ -242,17 +237,17 @@ export function PromptDetail({ id }: PromptDetailProps) {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">{t("common.active") + " " + t("common.version")}</CardTitle>
+            <CardTitle className="text-sm">活跃版本</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {prompt.versions.find((v) => v.id === prompt.active_version)?.label || "None"}
+              {prompt.versions.find((v) => v.id === prompt.active_version)?.label || "无"}
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">{t("prompt.publishedVersions")}</CardTitle>
+            <CardTitle className="text-sm">已发布版本</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{prompt.versions.filter((v) => v.status === 1).length}</div>
@@ -262,17 +257,17 @@ export function PromptDetail({ id }: PromptDetailProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>{t("prompt.versionHistory")}</CardTitle>
-          <CardDescription>{t("prompt.allVersions")}</CardDescription>
+          <CardTitle>版本历史</CardTitle>
+          <CardDescription>所有版本</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("common.version")}</TableHead>
-                <TableHead>{t("common.status")}</TableHead>
-                <TableHead>{t("common.created")}</TableHead>
-                <TableHead className="text-right">{t("common.actions")}</TableHead>
+                <TableHead>版本</TableHead>
+                <TableHead>状态</TableHead>
+                <TableHead>创建时间</TableHead>
+                <TableHead className="text-right">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -286,7 +281,7 @@ export function PromptDetail({ id }: PromptDetailProps) {
                   </TableCell>
                   <TableCell>
                     <Badge variant={version.status === 1 ? "default" : "secondary"}>
-                      {version.status === 1 ? t("common.published") : t("common.draft")}
+                      {version.status === 1 ? "已发布" : "草稿"}
                     </Badge>
                   </TableCell>
                   <TableCell>{new Date(version.ctime).toLocaleDateString()}</TableCell>
@@ -295,14 +290,14 @@ export function PromptDetail({ id }: PromptDetailProps) {
                       <Button variant="ghost" size="icon" asChild>
                         <Link href={`/dashboard/prompts/${prompt.id}/versions/${version.id}`}>
                           <Eye className="h-4 w-4" />
-                          <span className="sr-only">{t("common.view")}</span>
+                          <span className="sr-only">查看</span>
                         </Link>
                       </Button>
 
                       <Button variant="ghost" size="icon" asChild>
                         <Link href={`/dashboard/prompts/${prompt.id}/versions/${version.id}/edit`}>
                           <Edit2 className="h-4 w-4" />
-                          <span className="sr-only">{t("common.edit")}</span>
+                          <span className="sr-only">编辑</span>
                         </Link>
                       </Button>
 
@@ -313,7 +308,7 @@ export function PromptDetail({ id }: PromptDetailProps) {
                         disabled={isForking !== null || isPublishing !== null}
                       >
                         <GitBranch className={`h-4 w-4 ${isForking === version.id ? "animate-spin" : ""}`} />
-                        <span className="sr-only">{t("common.fork")}</span>
+                        <span className="sr-only">分支</span>
                       </Button>
 
                       {version.status === 0 && (
@@ -324,7 +319,7 @@ export function PromptDetail({ id }: PromptDetailProps) {
                           disabled={isPublishing !== null || isForking !== null}
                         >
                           <Upload className={`h-4 w-4 ${isPublishing === version.id ? "animate-pulse" : ""}`} />
-                          <span className="sr-only">{t("common.publish")}</span>
+                          <span className="sr-only">发布</span>
                         </Button>
                       )}
 
@@ -335,7 +330,7 @@ export function PromptDetail({ id }: PromptDetailProps) {
                           onClick={() => handleActivateVersion(version.id)}
                           disabled={isPublishing !== null || isForking !== null}
                         >
-                          {t("common.activate")}
+                          激活
                         </Button>
                       )}
 
@@ -347,21 +342,19 @@ export function PromptDetail({ id }: PromptDetailProps) {
                             disabled={prompt.versions.length === 1 || isPublishing !== null || isForking !== null}
                           >
                             <Trash2 className="h-4 w-4" />
-                            <span className="sr-only">{t("common.delete")}</span>
+                            <span className="sr-only">删除</span>
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>{t("common.delete")}</AlertDialogTitle>
+                            <AlertDialogTitle>删除版本</AlertDialogTitle>
                             <AlertDialogDescription>
-                              {t("prompt.deleteVersionConfirm").replace("{label}", version.label)}
+                              确定要删除版本 {version.label} 吗？此操作无法撤销。
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDeleteVersion(version.id)}>
-                              {t("common.delete")}
-                            </AlertDialogAction>
+                            <AlertDialogCancel>取消</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeleteVersion(version.id)}>删除</AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
