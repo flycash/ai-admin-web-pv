@@ -16,14 +16,14 @@ export function DashboardNav({ className, collapsed = false }: DashboardNavProps
 
   const navItems = [
     {
-      title: "提示词",
-      href: "/dashboard/prompts",
-      icon: <Sparkles className="h-5 w-5" />,
-    },
-    {
       title: "业务配置",
       href: "/dashboard/biz-config",
       icon: <Settings className="h-5 w-5" />,
+    },
+    {
+      title: "提示词",
+      href: "/dashboard/prompts",
+      icon: <Sparkles className="h-5 w-5" />,
     },
   ]
 

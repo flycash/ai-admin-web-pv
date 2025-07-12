@@ -7,12 +7,17 @@ export function saveUserInfo(profile: Profile) {
   }
 }
 
-export function getUserInfo(): Profile | null {
+export function getUserInfo(): Profile {
   if (typeof window !== "undefined") {
     const userInfo = localStorage.getItem("user_info")
-    return userInfo ? JSON.parse(userInfo) : null
+    try {
+      return userInfo ? JSON.parse(userInfo) : {} as Profile
+    } catch (e) {
+      console.log(e, userInfo)
+      return {} as Profile
+    }
   }
-  return null
+  return {} as Profile
 }
 
 export function clearUserInfo() {
