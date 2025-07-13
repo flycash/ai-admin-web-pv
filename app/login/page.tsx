@@ -68,6 +68,8 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
+
+      await http.post<LoginResponse>("/mock/login")
       // 模拟自动登录
       const mockProfile = {
         id: 1,
@@ -84,7 +86,7 @@ export default function LoginPage() {
       })
 
       // 跳转到仪表板
-      router.push("/dashboard")
+      router.push("/dashboard/biz-config")
     } catch (error) {
       console.error("Auto login error:", error)
       toast({

@@ -1,11 +1,6 @@
-// 通用响应格式
-export interface Result<T> {
-  code: number
-  msg: string
-  data: T
-}
-
 // 用户信息
+import {Result} from "@/lib/types/result";
+
 export interface Profile {
   id: number
   avatar: string

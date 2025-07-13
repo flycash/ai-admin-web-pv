@@ -12,8 +12,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft } from "lucide-react"
-import type { BizConfig } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
+import { bizConfigApi } from "@/lib/api"
+import {http} from "@/lib/http";
+import {Result} from "@/lib/types/result";
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -45,6 +47,8 @@ const formSchema = z.object({
     ),
 })
 
+type FormData = z.infer<typeof formSchema>
+
 interface BizConfigFormProps {
   id?: string
 }
@@ -53,57 +57,69 @@ export function BizConfigForm({ id }: BizConfigFormProps) {
   const router = useRouter()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingData, setIsLoadingData] = useState(false)
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
-      ownerID: 0,
+      ownerID: 1,
       ownerType: "user",
-      config: "",
+      config: "{}",
     },
   })
 
+  // 加载现有配置数据（编辑模式）
   useEffect(() => {
     if (id) {
-      // In real app, fetch the config data from API: GET /biz-config/:id
-      const mockConfig: BizConfig = {
-        id: Number.parseInt(id),
-        name: "用户偏好配置",
-        ownerID: 1001,
-        ownerType: "user",
-        config:
-          '{\n  "theme": "dark",\n  "language": "zh",\n  "notifications": {\n    "email": true,\n    "push": false\n  }\n}',
-      }
-      form.reset({
-        name: mockConfig.name,
-        ownerID: mockConfig.ownerID,
-        ownerType: mockConfig.ownerType,
-        config: mockConfig.config,
-      })
+      loadBizConfig()
     }
-  }, [id, form])
+  }, [id])
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsLoading(true)
+  const loadBizConfig = async () => {
+    if (!id) return
 
+    setIsLoadingData(true)
     try {
-      if (id) {
-        // Update existing config: POST /biz-config/update
-        console.log("更新配置:", { id: Number.parseInt(id), ...values })
-        toast({
-          title: "业务配置已更新",
-          description: "业务配置已成功更新",
+      const result = await bizConfigApi.get(Number.parseInt(id))
+      if (result.code === 0 && result.data) {
+        const config = result.data
+        form.reset({
+          name: config.name,
+          ownerID: config.ownerID,
+          ownerType: config.ownerType,
+          config: config.config,
         })
       } else {
-        // Create new config: POST /biz-config/add
-        console.log("创建配置:", values)
         toast({
-          title: "业务配置已创建",
-          description: "新业务配置已成功创建",
+          title: "加载失败",
+          description: result.msg || "无法加载业务配置数据",
+          variant: "destructive",
         })
       }
+    } catch (error) {
+      console.error("加载业务配置失败:", error)
+      toast({
+        title: "加载失败",
+        description: "加载业务配置时发生错误",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoadingData(false)
+    }
+  }
 
+  const onSubmit = async (values: FormData) => {
+    setIsLoading(true)
+    try {
+      await http.post<Result<number>>("/biz-configs/save", {
+        id: id,
+        ...values
+      })
+      toast({
+        title: "保存成功",
+        description: "业务配置已保存",
+      })
       router.push("/dashboard/biz-config")
     } catch (error) {
       console.error("保存配置时出错:", error)
@@ -124,14 +140,38 @@ export function BizConfigForm({ id }: BizConfigFormProps) {
       const formatted = JSON.stringify(parsed, null, 2)
       form.setValue("config", formatted)
     } catch (error) {
-      // Invalid JSON, don't format
+      toast({
+        title: "格式化失败",
+        description: "JSON 格式不正确，无法格式化",
+        variant: "destructive",
+      })
     }
+  }
+
+  const handleCancel = () => {
+    router.push("/dashboard/biz-config")
+  }
+
+  if (isLoadingData) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={handleCancel}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold">加载中...</h1>
+            <p className="text-muted-foreground">正在加载业务配置数据</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
+        <Button variant="ghost" size="icon" onClick={handleCancel}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
@@ -141,7 +181,7 @@ export function BizConfigForm({ id }: BizConfigFormProps) {
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8" method="post">
           <Card>
             <CardHeader>
               <CardTitle>基本信息</CardTitle>
@@ -164,56 +204,58 @@ export function BizConfigForm({ id }: BizConfigFormProps) {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>所有者信息</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="ownerID"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>所有者 ID</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          placeholder="输入所有者 ID"
-                          {...field}
-                          onChange={(e) => field.onChange(Number.parseInt(e.target.value) || 0)}
-                        />
-                      </FormControl>
-                      <FormDescription>配置所有者的唯一标识符。</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="ownerType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>所有者类型</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+          {!id && (
+            <Card>
+              <CardHeader>
+                <CardTitle>所有者信息</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="ownerID"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>所有者 ID</FormLabel>
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="选择所有者类型" />
-                          </SelectTrigger>
+                          <Input
+                            type="number"
+                            placeholder="输入所有者 ID"
+                            {...field}
+                            onChange={(e) => field.onChange(Number.parseInt(e.target.value) || 1)}
+                          />
                         </FormControl>
-                        <SelectContent>
-                          <SelectItem value="user">用户</SelectItem>
-                          <SelectItem value="organization">组织</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>所有者的类型（用户或组织）。</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </CardContent>
-          </Card>
+                        <FormDescription>配置所有者的唯一标识符。</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="ownerType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>所有者类型</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="选择所有者类型" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="user">用户</SelectItem>
+                            <SelectItem value="organization">组织</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>所有者的类型（用户或组织）。</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader>
@@ -247,7 +289,7 @@ export function BizConfigForm({ id }: BizConfigFormProps) {
           </Card>
 
           <div className="flex justify-end gap-4">
-            <Button type="button" variant="outline" onClick={() => router.push("/dashboard/biz-config")}>
+            <Button type="button" variant="outline" onClick={handleCancel}>
               取消
             </Button>
             <Button type="submit" disabled={isLoading}>
