@@ -9,16 +9,8 @@ import { ArrowLeft, Edit2, Copy } from "lucide-react"
 import Link from "next/link"
 import type { BizConfig } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
-
-// Mock data for demonstration
-const mockConfig: BizConfig = {
-  id: 1,
-  name: "用户偏好配置",
-  ownerID: 1001,
-  ownerType: "user",
-  config:
-    '{\n  "theme": "dark",\n  "language": "zh",\n  "notifications": {\n    "email": true,\n    "push": false\n  },\n  "preferences": {\n    "timezone": "UTC+8",\n    "date_format": "YYYY-MM-DD"\n  },\n  "security": {\n    "two_factor": true,\n    "session_timeout": 3600\n  }\n}',
-}
+import {Result} from "@/lib/types/result";
+import {http} from "@/lib/http";
 
 interface BizConfigDetailProps {
   id: string
@@ -31,7 +23,10 @@ export function BizConfigDetail({ id }: BizConfigDetailProps) {
 
   useEffect(() => {
     // In real app, fetch from API: GET /biz-config/:id
-    setConfig(mockConfig)
+    http.post<Result<BizConfig>>("/biz-configs/detail", {id: parseInt(id)}).then(res => {
+      const data = res.data?.data
+      setConfig(data)
+    })
   }, [id])
 
   const handleCopyConfig = () => {
@@ -86,9 +81,6 @@ export function BizConfigDetail({ id }: BizConfigDetailProps) {
         </Button>
         <div className="flex-1">
           <h1 className="text-3xl font-bold">{config.name}</h1>
-          <p className="text-muted-foreground">
-            {getOwnerTypeText(config.ownerType)} {config.ownerID} 的配置
-          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" asChild>

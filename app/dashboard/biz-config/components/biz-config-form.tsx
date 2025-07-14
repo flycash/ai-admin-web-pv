@@ -13,9 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { bizConfigApi } from "@/lib/api"
 import {http} from "@/lib/http";
 import {Result} from "@/lib/types/result";
+import type {BizConfig} from "@/lib/types";
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -50,7 +50,7 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>
 
 interface BizConfigFormProps {
-  id?: string
+  id?: number
 }
 
 export function BizConfigForm({ id }: BizConfigFormProps) {
@@ -81,7 +81,8 @@ export function BizConfigForm({ id }: BizConfigFormProps) {
 
     setIsLoadingData(true)
     try {
-      const result = await bizConfigApi.get(Number.parseInt(id))
+      const resp = await http.post<Result<BizConfig>>("/biz-configs/detail", {id: parseInt(id)})
+      const result = resp.data
       if (result.code === 0 && result.data) {
         const config = result.data
         form.reset({
