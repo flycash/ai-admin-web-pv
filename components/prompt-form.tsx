@@ -13,6 +13,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
+import {http} from "@/lib/http";
+import {Result} from "@/lib/types/result";
+
+const maxTokens = 40000
 
 // Mock data matching backend PromptVersionVO structure
 const mockPrompts = [
@@ -71,7 +75,7 @@ const formSchema = z.object({
   }),
   temperature: z.number().min(0).max(1),
   top_n: z.number().min(0).max(1),
-  max_tokens: z.number().min(1).max(4000),
+  max_tokens: z.number().min(1).max(maxTokens),
   status: z.number().min(0).max(1),
   biz_config_id: z.number().min(1, {
     message: "请选择一个业务配置。",
@@ -103,22 +107,22 @@ export function PromptForm({ id }: PromptFormProps) {
     },
   })
 
+  type FormData = z.infer<typeof formSchema>
+
   // 获取业务配置列表
   useEffect(() => {
     const fetchBizConfigs = async () => {
       try {
         setLoadingBizConfigs(true)
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:9002"}/biz_config`, {
-          credentials: "include",
+        const response = await http.post<Result<{cfgs: BizConfig[], total: number}>>("/biz-configs/list", {
+          offset:0,
+          // 正常来说，是不可能超过 100 的，暂时写死
+          limit: 100
         })
 
-        if (!response.ok) {
-          throw new Error("获取业务配置失败")
-        }
-
-        const result = await response.json()
+        const result = response.data
         if (result.code === 0) {
-          setBizConfigs(result.data || [])
+          setBizConfigs(result.data?.cfgs || [])
         } else {
           throw new Error(result.msg || "获取业务配置失败")
         }
@@ -147,9 +151,9 @@ export function PromptForm({ id }: PromptFormProps) {
     }
   }, [id, form])
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  const onSubmit = async (values: FormData) => {
+    console.log("abc")
     setIsLoading(true)
-
     try {
       if (id) {
         // Update existing prompt: POST /prompt/update/version
@@ -226,20 +230,20 @@ export function PromptForm({ id }: PromptFormProps) {
               <CardTitle>基本信息</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <FormField
-                control={form.control}
-                name="label"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>标签</FormLabel>
-                    <FormControl>
-                      <Input placeholder="文本摘要" {...field} />
-                    </FormControl>
-                    <FormDescription>为您的提示词提供一个描述性标签。</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/*<FormField*/}
+              {/*  control={form.control}*/}
+              {/*  name="label"*/}
+              {/*  render={({ field }) => (*/}
+              {/*    <FormItem>*/}
+              {/*      <FormLabel>标签</FormLabel>*/}
+              {/*      <FormControl>*/}
+              {/*        <Input placeholder="文本摘要" {...field} />*/}
+              {/*      </FormControl>*/}
+              {/*      <FormDescription>为您的提示词提供一个描述性标签。</FormDescription>*/}
+              {/*      <FormMessage />*/}
+              {/*    </FormItem>*/}
+              {/*  )}*/}
+              {/*/>*/}
               <FormField
                 control={form.control}
                 name="biz_config_id"
@@ -351,7 +355,7 @@ export function PromptForm({ id }: PromptFormProps) {
                     <FormControl>
                       <Slider
                         min={1}
-                        max={4000}
+                        max={maxTokens}
                         step={1}
                         value={[field.value]}
                         onValueChange={(value) => field.onChange(value[0])}
