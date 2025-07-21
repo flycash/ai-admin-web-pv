@@ -8,8 +8,6 @@ export interface InvocationConfig {
   ctime: number
   // 更新时间，毫秒数
   utime: number
-  // 当前保持活跃的 PromptVersion 的 id
-  activeVersion: number
 }
 
 // 调用大模型的配置的版本
@@ -30,4 +28,10 @@ export interface ConfigVersion {
   maxTokens: number
   // 大模型调用中的 temperature 参数
   temperature: number
+  // 创建时间，毫秒数
+  ctime: number
+  // ACTIVE 或者 INACTIVE
+  status: string
+  // 更新时间，毫秒数
+  utime: number
 }
