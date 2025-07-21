@@ -27,9 +27,10 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
-import { invocationConfigApi, type PaginatedResponse } from "@/lib/api"
 import { toast } from "sonner"
 import type { InvocationConfig } from "@/lib/types/llm_invocation"
+import {http} from "@/lib/http";
+import {DataList, Result} from "@/lib/types/result";
 
 export function InvocationConfigTable() {
   const [configs, setConfigs] = useState<InvocationConfig[]>([])
@@ -44,18 +45,20 @@ export function InvocationConfigTable() {
 
   // 获取调用配置列表
   const fetchConfigs = async (page = 1, pageSize = 10) => {
+    const offset = (page-1) * pageSize
     try {
       setLoading(true)
-      const result = await invocationConfigApi.getList({ page, pageSize })
+      const resp = await http.post<Result<DataList<InvocationConfig>>>("/invocation-configs/list", {offset: offset, limit: pageSize})
+      const result = resp.data
 
       if (result.code === 0) {
-        const data = result.data as PaginatedResponse<InvocationConfig>
-        setConfigs(data.data)
+        const data = result.data || []
+        setConfigs(data?.list || [])
         setPagination({
-          page: data.page,
-          pageSize: data.pageSize,
-          total: data.total,
-          totalPages: data.totalPages,
+          page: page,
+          pageSize: pageSize,
+          total: result?.data?.total || 0,
+          totalPages: Math.ceil(data?.total/pageSize),
         })
       } else {
         toast.error(result.msg || "获取调用配置列表失败")
@@ -70,27 +73,27 @@ export function InvocationConfigTable() {
 
   // 删除调用配置
   const handleDelete = async (id: string, name: string) => {
-    try {
-      setDeleting(id)
-      const result = await invocationConfigApi.delete(id)
-
-      if (result.code === 0) {
-        toast.success(`调用配置 "${name}" 删除成功`)
-        // 如果当前页没有数据了，回到上一页
-        if (configs.length === 1 && pagination.page > 1) {
-          await fetchConfigs(pagination.page - 1, pagination.pageSize)
-        } else {
-          await fetchConfigs(pagination.page, pagination.pageSize)
-        }
-      } else {
-        toast.error(result.msg || "删除调用配置失败")
-      }
-    } catch (error) {
-      console.error("删除调用配置失败:", error)
-      toast.error("删除调用配置失败，请稍后重试")
-    } finally {
-      setDeleting(null)
-    }
+    // try {
+    //   setDeleting(id)
+    //   const result = await invocationConfigApi.delete(id)
+    //
+    //   if (result.code === 0) {
+    //     toast.success(`调用配置 "${name}" 删除成功`)
+    //     // 如果当前页没有数据了，回到上一页
+    //     if (configs.length === 1 && pagination.page > 1) {
+    //       await fetchConfigs(pagination.page - 1, pagination.pageSize)
+    //     } else {
+    //       await fetchConfigs(pagination.page, pagination.pageSize)
+    //     }
+    //   } else {
+    //     toast.error(result.msg || "删除调用配置失败")
+    //   }
+    // } catch (error) {
+    //   console.error("删除调用配置失败:", error)
+    //   toast.error("删除调用配置失败，请稍后重试")
+    // } finally {
+    //   setDeleting(null)
+    // }
   }
 
   // 页面变化处理
