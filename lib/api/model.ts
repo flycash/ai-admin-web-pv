@@ -1,6 +1,6 @@
 import { apiRequest } from "./types"
 
-export interface Model {
+export interface ModelInfo {
   id: string
   name: string
   provider: string
@@ -10,11 +10,11 @@ export interface Model {
 export const modelApi = {
   // 获取模型列表
   getList: () => {
-    return apiRequest.get<Model[]>("/models")
+    return apiRequest.get<ModelInfo[]>("/models")
   },
 
-  // 根据提供商获取模型列表
-  getByProvider: (provider: string) => {
-    return apiRequest.get<Model[]>(`/models/provider/${provider}`)
+  // 根据ID获取模型信息
+  getById: (id: string) => {
+    return apiRequest.get<ModelInfo>(`/models/${id}`)
   },
 }

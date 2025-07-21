@@ -1,25 +1,15 @@
 import { apiRequest } from "./types"
-import type { Profile } from "@/lib/types/user"
-
-export interface LoginRequest {
-  username: string
-  password: string
-}
-
-export interface LoginResponse {
-  token: string
-  user: Profile
-}
+import type { User, LoginRequest } from "@/lib/types/user"
 
 export const userApi = {
   // 用户登录
   login: (data: LoginRequest) => {
-    return apiRequest.post<LoginResponse>("/auth/login", data)
+    return apiRequest.post<{ user: User; token: string }>("/auth/login", data)
   },
 
-  // 获取用户信息
-  getUserInfo: () => {
-    return apiRequest.get<Profile>("/auth/me")
+  // 获取当前用户信息
+  getCurrentUser: () => {
+    return apiRequest.get<User>("/auth/me")
   },
 
   // 用户登出

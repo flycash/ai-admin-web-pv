@@ -7,11 +7,6 @@ export const bizConfigApi = {
     return apiRequest.get<PaginatedResponse<BizConfig>>("/biz_config", params)
   },
 
-  // 获取所有业务配置（不分页）
-  getAll: () => {
-    return apiRequest.get<BizConfig[]>("/biz_config/all")
-  },
-
   // 根据ID获取业务配置
   getById: (id: string) => {
     return apiRequest.get<BizConfig>(`/biz_config/${id}`)

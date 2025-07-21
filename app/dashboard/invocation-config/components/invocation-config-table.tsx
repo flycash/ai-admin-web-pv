@@ -27,14 +27,14 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
-import { invocationConfigApi, type InvocationConfigVO, type PaginatedResponse } from "@/lib/api"
-import { useToast } from "@/hooks/use-toast"
+import { invocationConfigApi, type PaginatedResponse } from "@/lib/api"
+import { toast } from "sonner"
+import type { InvocationConfig } from "@/lib/types/llm_invocation"
 
 export function InvocationConfigTable() {
-  const { toast } = useToast()
-  const [configs, setConfigs] = useState<InvocationConfigVO[]>([])
+  const [configs, setConfigs] = useState<InvocationConfig[]>([])
   const [loading, setLoading] = useState(true)
-  const [deleting, setDeleting] = useState<number | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
   const [pagination, setPagination] = useState({
     page: 1,
     pageSize: 10,
@@ -46,80 +46,48 @@ export function InvocationConfigTable() {
   const fetchConfigs = async (page = 1, pageSize = 10) => {
     try {
       setLoading(true)
-      const result = await invocationConfigApi.list(page, pageSize)
+      const result = await invocationConfigApi.getList({ page, pageSize })
 
       if (result.code === 0) {
-        // 如果 API 返回分页数据
-        if (typeof result.data === "object" && "data" in result.data) {
-          const paginatedData = result.data as unknown as PaginatedResponse<InvocationConfigVO>
-          setConfigs(paginatedData.data)
-          setPagination({
-            page: paginatedData.page,
-            pageSize: paginatedData.pageSize,
-            total: paginatedData.total,
-            totalPages: paginatedData.totalPages,
-          })
-        } else {
-          // 如果 API 返回简单数组，模拟分页
-          const allData = result.data as InvocationConfigVO[]
-          const startIndex = (page - 1) * pageSize
-          const endIndex = startIndex + pageSize
-          const paginatedData = allData.slice(startIndex, endIndex)
-
-          setConfigs(paginatedData)
-          setPagination({
-            page,
-            pageSize,
-            total: allData.length,
-            totalPages: Math.ceil(allData.length / pageSize),
-          })
-        }
-      } else {
-        toast({
-          title: "获取失败",
-          description: result.msg || "获取调用配置列表失败",
-          variant: "destructive",
+        const data = result.data as PaginatedResponse<InvocationConfig>
+        setConfigs(data.data)
+        setPagination({
+          page: data.page,
+          pageSize: data.pageSize,
+          total: data.total,
+          totalPages: data.totalPages,
         })
+      } else {
+        toast.error(result.msg || "获取调用配置列表失败")
       }
     } catch (error) {
       console.error("获取调用配置列表失败:", error)
-      toast({
-        title: "获取失败",
-        description: "获取调用配置列表失败，请稍后重试",
-        variant: "destructive",
-      })
+      toast.error("获取调用配置列表失败，请稍后重试")
     } finally {
       setLoading(false)
     }
   }
 
   // 删除调用配置
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string, name: string) => {
     try {
       setDeleting(id)
       const result = await invocationConfigApi.delete(id)
 
       if (result.code === 0) {
-        toast({
-          title: "删除成功",
-          description: "调用配置已成功删除",
-        })
-        // 重新获取当前页数据
-        await fetchConfigs(pagination.page, pagination.pageSize)
+        toast.success(`调用配置 "${name}" 删除成功`)
+        // 如果当前页没有数据了，回到上一页
+        if (configs.length === 1 && pagination.page > 1) {
+          await fetchConfigs(pagination.page - 1, pagination.pageSize)
+        } else {
+          await fetchConfigs(pagination.page, pagination.pageSize)
+        }
       } else {
-        toast({
-          title: "删除失败",
-          description: result.msg || "删除调用配置失败",
-          variant: "destructive",
-        })
+        toast.error(result.msg || "删除调用配置失败")
       }
     } catch (error) {
       console.error("删除调用配置失败:", error)
-      toast({
-        title: "删除失败",
-        description: "删除调用配置失败，请稍后重试",
-        variant: "destructive",
-      })
+      toast.error("删除调用配置失败，请稍后重试")
     } finally {
       setDeleting(null)
     }
@@ -127,7 +95,9 @@ export function InvocationConfigTable() {
 
   // 页面变化处理
   const handlePageChange = (page: number) => {
-    fetchConfigs(page, pagination.pageSize)
+    if (page >= 1 && page <= pagination.totalPages) {
+      fetchConfigs(page, pagination.pageSize)
+    }
   }
 
   // 初始化加载
@@ -135,37 +105,14 @@ export function InvocationConfigTable() {
     fetchConfigs()
   }, [])
 
-  // 生成分页链接
+  // 生成分页项
   const generatePaginationItems = () => {
     const items = []
     const { page, totalPages } = pagination
 
-    // 显示前几页
-    for (let i = 1; i <= Math.min(3, totalPages); i++) {
-      items.push(
-        <PaginationItem key={i}>
-          <PaginationLink onClick={() => handlePageChange(i)} isActive={page === i} className="cursor-pointer">
-            {i}
-          </PaginationLink>
-        </PaginationItem>,
-      )
-    }
-
-    // 显示省略号
-    if (totalPages > 6 && page > 4) {
-      items.push(
-        <PaginationItem key="ellipsis1">
-          <PaginationEllipsis />
-        </PaginationItem>,
-      )
-    }
-
-    // 显示当前页附近的页码
-    const start = Math.max(4, page - 1)
-    const end = Math.min(totalPages - 3, page + 1)
-
-    for (let i = start; i <= end; i++) {
-      if (i > 3 && i < totalPages - 2) {
+    if (totalPages <= 7) {
+      // 如果总页数小于等于7，显示所有页码
+      for (let i = 1; i <= totalPages; i++) {
         items.push(
           <PaginationItem key={i}>
             <PaginationLink onClick={() => handlePageChange(i)} isActive={page === i} className="cursor-pointer">
@@ -174,24 +121,57 @@ export function InvocationConfigTable() {
           </PaginationItem>,
         )
       }
-    }
-
-    // 显示省略号
-    if (totalPages > 6 && page < totalPages - 3) {
+    } else {
+      // 复杂分页逻辑
+      // 始终显示第一页
       items.push(
-        <PaginationItem key="ellipsis2">
-          <PaginationEllipsis />
+        <PaginationItem key={1}>
+          <PaginationLink onClick={() => handlePageChange(1)} isActive={page === 1} className="cursor-pointer">
+            1
+          </PaginationLink>
         </PaginationItem>,
       )
-    }
 
-    // 显示最后几页
-    for (let i = Math.max(totalPages - 2, 4); i <= totalPages; i++) {
-      if (i > 3) {
+      if (page > 4) {
+        items.push(
+          <PaginationItem key="ellipsis1">
+            <PaginationEllipsis />
+          </PaginationItem>,
+        )
+      }
+
+      // 显示当前页附近的页码
+      const start = Math.max(2, page - 1)
+      const end = Math.min(totalPages - 1, page + 1)
+
+      for (let i = start; i <= end; i++) {
         items.push(
           <PaginationItem key={i}>
             <PaginationLink onClick={() => handlePageChange(i)} isActive={page === i} className="cursor-pointer">
               {i}
+            </PaginationLink>
+          </PaginationItem>,
+        )
+      }
+
+      if (page < totalPages - 3) {
+        items.push(
+          <PaginationItem key="ellipsis2">
+            <PaginationEllipsis />
+          </PaginationItem>,
+        )
+      }
+
+      // 始终显示最后一页
+      if (totalPages > 1) {
+        items.push(
+          <PaginationItem key={totalPages}>
+            <PaginationLink
+              onClick={() => handlePageChange(totalPages)}
+              isActive={page === totalPages}
+              className="cursor-pointer"
+            >
+              {totalPages}
             </PaginationLink>
           </PaginationItem>,
         )
@@ -199,6 +179,16 @@ export function InvocationConfigTable() {
     }
 
     return items
+  }
+
+  // 格式化时间
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp * 1000).toLocaleString("zh-CN")
+  }
+
+  // 获取活跃版本数量
+  const getActiveVersionsCount = (config: InvocationConfig) => {
+    return config.versions?.filter((v) => v.status === "ACTIVE").length || 0
   }
 
   if (loading) {
@@ -212,23 +202,25 @@ export function InvocationConfigTable() {
                 <TableHead>描述</TableHead>
                 <TableHead>业务配置ID</TableHead>
                 <TableHead>版本数</TableHead>
+                <TableHead>活跃版本</TableHead>
                 <TableHead>创建时间</TableHead>
                 <TableHead className="text-right">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {Array.from({ length: 5 }).map((_, index) => (
+              {Array.from({ length: pagination.pageSize }).map((_, index) => (
                 <TableRow key={index}>
                   <TableCell>
-                    <div className="space-y-2">
-                      <Skeleton className="h-4 w-32" />
-                    </div>
+                    <Skeleton className="h-4 w-32" />
                   </TableCell>
                   <TableCell>
                     <Skeleton className="h-4 w-48" />
                   </TableCell>
                   <TableCell>
                     <Skeleton className="h-4 w-16" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-12" />
                   </TableCell>
                   <TableCell>
                     <Skeleton className="h-4 w-12" />
@@ -265,6 +257,7 @@ export function InvocationConfigTable() {
               <TableHead>描述</TableHead>
               <TableHead>业务配置ID</TableHead>
               <TableHead>版本数</TableHead>
+              <TableHead>活跃版本</TableHead>
               <TableHead>创建时间</TableHead>
               <TableHead className="text-right">操作</TableHead>
             </TableRow>
@@ -272,7 +265,7 @@ export function InvocationConfigTable() {
           <TableBody>
             {configs.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   未找到调用配置。创建您的第一个调用配置以开始使用。
                 </TableCell>
               </TableRow>
@@ -283,16 +276,23 @@ export function InvocationConfigTable() {
                     <div className="font-medium">{config.name}</div>
                   </TableCell>
                   <TableCell>
-                    <div className="max-w-xs truncate">{config.description || "无描述"}</div>
+                    <div className="max-w-xs truncate" title={config.description}>
+                      {config.description || "无描述"}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">{config.bizID}</Badge>
                   </TableCell>
                   <TableCell>
-                    <span className="font-medium">{config.versions?.length || 0}</span>
+                    <Badge variant="secondary">{config.versions?.length || 0}</Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="text-sm">{new Date(config.ctime * 1000).toLocaleDateString()}</div>
+                    <Badge variant={getActiveVersionsCount(config) > 0 ? "default" : "secondary"}>
+                      {getActiveVersionsCount(config)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-sm">{formatDate(config.ctime)}</div>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
@@ -310,8 +310,8 @@ export function InvocationConfigTable() {
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" disabled={deleting === config.bizID}>
-                            {deleting === config.bizID ? (
+                          <Button variant="ghost" size="icon" disabled={deleting === config.bizID.toString()}>
+                            {deleting === config.bizID.toString() ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
                               <Trash2 className="h-4 w-4" />
@@ -323,16 +323,16 @@ export function InvocationConfigTable() {
                           <AlertDialogHeader>
                             <AlertDialogTitle>删除调用配置</AlertDialogTitle>
                             <AlertDialogDescription>
-                              确定要删除调用配置 "{config.name}" 吗？此操作无法撤销。
+                              确定要删除调用配置 "{config.name}" 吗？此操作无法撤销，同时会删除该配置下的所有版本。
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>取消</AlertDialogCancel>
                             <AlertDialogAction
-                              onClick={() => handleDelete(config.bizID)}
-                              disabled={deleting === config.bizID}
+                              onClick={() => handleDelete(config.bizID.toString(), config.name)}
+                              disabled={deleting === config.bizID.toString()}
                             >
-                              {deleting === config.bizID ? (
+                              {deleting === config.bizID.toString() ? (
                                 <>
                                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                   删除中...

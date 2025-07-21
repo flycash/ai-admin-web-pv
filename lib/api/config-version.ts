@@ -28,7 +28,7 @@ export const configVersionApi = {
   },
 
   // 切换版本状态
-  toggleStatus: (configId: string, versionId: string) => {
-    return apiRequest.post<ConfigVersion>(`/invocation_config/${configId}/versions/${versionId}/toggle-status`)
+  toggleStatus: (configId: string, versionId: string, status: "ACTIVE" | "INACTIVE") => {
+    return apiRequest.put<ConfigVersion>(`/invocation_config/${configId}/versions/${versionId}/status`, { status })
   },
 }

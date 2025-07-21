@@ -8,106 +8,73 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useToast } from "@/hooks/use-toast"
-import { userApi } from "@/lib/api"
-import { setUserInfo } from "@/lib/utils/user"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Loader2 } from "lucide-react"
+import { useAuth } from "@/components/auth-provider"
 
 export default function LoginPage() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+  const { login } = useAuth()
   const router = useRouter()
-  const { toast } = useToast()
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
+    setLoading(true)
+    setError("")
 
     try {
-      const result = await userApi.login({ username, password })
-
-      if (result.success && result.data) {
-        // 保存用户信息和token
-        setUserInfo(result.data.user, result.data.token)
-
-        toast({
-          title: "登录成功",
-          description: `欢迎回来，${result.data.user.name}！`,
-        })
-
+      const success = await login(username, password)
+      if (success) {
         router.push("/dashboard")
       } else {
-        toast({
-          title: "登录失败",
-          description: result.message || "用户名或密码错误",
-          variant: "destructive",
-        })
+        setError("用户名或密码错误")
       }
     } catch (error) {
-      toast({
-        title: "登录失败",
-        description: "网络错误，请稍后重试",
-        variant: "destructive",
-      })
+      setError("登录失败，请稍后重试")
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
   const handleAutoLogin = async () => {
-    setIsLoading(true)
+    setLoading(true)
+    setError("")
 
     try {
-      // 模拟自动登录
-      const mockUser = {
-        id: "1",
-        name: "管理员",
-        username: "admin",
-        email: "admin@example.com",
-        role: "admin" as const,
-        avatar: "/placeholder-user.jpg",
+      const success = await login("admin", "admin123")
+      if (success) {
+        router.push("/dashboard")
+      } else {
+        setError("自动登录失败")
       }
-
-      const mockToken = "mock-jwt-token-" + Date.now()
-
-      // 保存用户信息
-      setUserInfo(mockUser, mockToken)
-
-      toast({
-        title: "自动登录成功",
-        description: `欢迎回来，${mockUser.name}！`,
-      })
-
-      router.push("/dashboard")
     } catch (error) {
-      toast({
-        title: "自动登录失败",
-        description: "请手动登录",
-        variant: "destructive",
-      })
+      setError("自动登录失败，请稍后重试")
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl text-center">AI 管理后台</CardTitle>
-          <CardDescription className="text-center">请登录您的账户</CardDescription>
+        <CardHeader>
+          <CardTitle>登录</CardTitle>
+          <CardDescription>请输入您的用户名和密码</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <form onSubmit={handleLogin} className="space-y-4">
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="username">用户名</Label>
               <Input
                 id="username"
                 type="text"
-                placeholder="请输入用户名"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
+                disabled={loading}
               />
             </div>
             <div className="space-y-2">
@@ -115,29 +82,46 @@ export default function LoginPage() {
               <Input
                 id="password"
                 type="password"
-                placeholder="请输入密码"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                disabled={loading}
               />
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "登录中..." : "登录"}
-            </Button>
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            <div className="space-y-2">
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    登录中...
+                  </>
+                ) : (
+                  "登录"
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full bg-transparent"
+                onClick={handleAutoLogin}
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    自动登录中...
+                  </>
+                ) : (
+                  "自动登录 (admin/admin123)"
+                )}
+              </Button>
+            </div>
           </form>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">或者</span>
-            </div>
-          </div>
-
-          <Button variant="outline" className="w-full bg-transparent" onClick={handleAutoLogin} disabled={isLoading}>
-            {isLoading ? "登录中..." : "一键登录（演示）"}
-          </Button>
         </CardContent>
       </Card>
     </div>

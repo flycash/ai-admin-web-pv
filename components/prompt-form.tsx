@@ -1,173 +1,126 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
 import { Button } from "@/components/ui/button"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useToast } from "@/hooks/use-toast"
+import { Label } from "@/components/ui/label"
+import { Loader2, Send } from "lucide-react"
 import { bizConfigApi } from "@/lib/api"
+import { toast } from "sonner"
 import type { BizConfig } from "@/lib/types/biz_config"
 
-const formSchema = z.object({
-  name: z.string().min(1, "名称不能为空"),
-  description: z.string().optional(),
-  content: z.string().min(1, "内容不能为空"),
-  biz_config_id: z.string().min(1, "请选择业务配置"),
-})
-
-type FormData = z.infer<typeof formSchema>
-
-interface PromptFormProps {
-  initialData?: Partial<FormData>
-  onSubmit: (data: FormData) => Promise<void>
-  isLoading?: boolean
-}
-
-export function PromptForm({ initialData, onSubmit, isLoading = false }: PromptFormProps) {
+export function PromptForm() {
+  const [prompt, setPrompt] = useState("")
+  const [bizConfigId, setBizConfigId] = useState<string>("")
   const [bizConfigs, setBizConfigs] = useState<BizConfig[]>([])
-  const [isLoadingConfigs, setIsLoadingConfigs] = useState(true)
-  const { toast } = useToast()
-  const router = useRouter()
-
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: initialData?.name || "",
-      description: initialData?.description || "",
-      content: initialData?.content || "",
-      biz_config_id: initialData?.biz_config_id || "",
-    },
-  })
+  const [loading, setLoading] = useState(false)
+  const [loadingConfigs, setLoadingConfigs] = useState(true)
 
   // 获取业务配置列表
   useEffect(() => {
     const fetchBizConfigs = async () => {
       try {
-        const result = await bizConfigApi.getAll()
-        if (result.success && result.data) {
-          setBizConfigs(result.data)
+        setLoadingConfigs(true)
+        const result = await bizConfigApi.getList()
+        if (result.code === 0) {
+          setBizConfigs(result.data.data || [])
         } else {
-          toast({
-            title: "获取业务配置失败",
-            description: result.message || "请稍后重试",
-            variant: "destructive",
-          })
+          toast.error("获取业务配置失败")
         }
       } catch (error) {
-        toast({
-          title: "获取业务配置失败",
-          description: "网络错误，请稍后重试",
-          variant: "destructive",
-        })
+        console.error("获取业务配置失败:", error)
+        toast.error("获取业务配置失败")
       } finally {
-        setIsLoadingConfigs(false)
+        setLoadingConfigs(false)
       }
     }
 
     fetchBizConfigs()
-  }, [toast])
+  }, [])
 
-  const handleSubmit = async (data: FormData) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!prompt.trim()) {
+      toast.error("请输入提示词")
+      return
+    }
+
+    if (!bizConfigId) {
+      toast.error("请选择业务配置")
+      return
+    }
+
+    setLoading(true)
+
     try {
-      await onSubmit(data)
+      // 这里应该调用实际的提示词处理 API
+      await new Promise((resolve) => setTimeout(resolve, 2000)) // 模拟 API 调用
+
+      toast.success("提示词处理成功")
+      setPrompt("")
     } catch (error) {
-      // 错误处理由父组件负责
+      console.error("提示词处理失败:", error)
+      toast.error("提示词处理失败")
+    } finally {
+      setLoading(false)
     }
   }
 
   return (
-    <Card>
+    <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
-        <CardTitle>{initialData ? "编辑提示词" : "创建提示词"}</CardTitle>
-        <CardDescription>{initialData ? "修改提示词信息" : "创建一个新的提示词"}</CardDescription>
+        <CardTitle>AI 提示词测试</CardTitle>
+        <CardDescription>输入您的提示词并选择业务配置进行测试</CardDescription>
       </CardHeader>
       <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>名称</FormLabel>
-                  <FormControl>
-                    <Input placeholder="请输入提示词名称" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="bizConfig">业务配置</Label>
+            <Select value={bizConfigId} onValueChange={setBizConfigId} disabled={loadingConfigs}>
+              <SelectTrigger>
+                <SelectValue placeholder={loadingConfigs ? "加载中..." : "选择业务配置"} />
+              </SelectTrigger>
+              <SelectContent>
+                {bizConfigs.map((config) => (
+                  <SelectItem key={config.id} value={config.id.toString()}>
+                    {config.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>描述</FormLabel>
-                  <FormControl>
-                    <Input placeholder="请输入提示词描述（可选）" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+          <div className="space-y-2">
+            <Label htmlFor="prompt">提示词</Label>
+            <Textarea
+              id="prompt"
+              placeholder="请输入您的提示词..."
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              rows={6}
+              disabled={loading}
             />
+          </div>
 
-            <FormField
-              control={form.control}
-              name="biz_config_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>业务配置</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoadingConfigs}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder={isLoadingConfigs ? "加载中..." : "请选择业务配置"} />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {bizConfigs.map((config) => (
-                        <SelectItem key={config.id} value={config.id}>
-                          {config.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="content"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>内容</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="请输入提示词内容" className="min-h-[200px]" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="flex justify-end space-x-4">
-              <Button type="button" variant="outline" onClick={() => router.back()} disabled={isLoading}>
-                取消
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? "保存中..." : "保存"}
-              </Button>
-            </div>
-          </form>
-        </Form>
+          <Button type="submit" className="w-full" disabled={loading || !prompt.trim() || !bizConfigId}>
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                处理中...
+              </>
+            ) : (
+              <>
+                <Send className="mr-2 h-4 w-4" />
+                发送
+              </>
+            )}
+          </Button>
+        </form>
       </CardContent>
     </Card>
   )

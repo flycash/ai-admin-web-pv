@@ -1,18 +1,67 @@
 "use client"
 
 import type React from "react"
+
 import { createContext, useContext, useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
-import { getUserInfo, clearUserInfo, isLoggedIn } from "@/lib/utils/user"
-import type { Profile } from "@/lib/types/user"
+import { userApi } from "@/lib/api"
+import { getUserFromStorage, setUserToStorage, removeUserFromStorage } from "@/lib/utils/user"
+import type { User } from "@/lib/types/user"
 
 interface AuthContextType {
-  user: Profile | null
-  isAuthenticated: boolean
+  user: User | null
+  login: (username: string, password: string) => Promise<boolean>
   logout: () => void
+  loading: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+  const router = useRouter()
+  const pathname = usePathname()
+
+  useEffect(() => {
+    // 从本地存储获取用户信息
+    const storedUser = getUserFromStorage()
+    if (storedUser) {
+      setUser(storedUser)
+    }
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    // 如果用户未登录且不在登录页面，重定向到登录页
+    if (!loading && !user && pathname !== "/login") {
+      router.push("/login")
+    }
+  }, [user, loading, pathname, router])
+
+  const login = async (username: string, password: string): Promise<boolean> => {
+    try {
+      const result = await userApi.login({ username, password })
+      if (result.code === 0) {
+        setUser(result.data.user)
+        setUserToStorage(result.data.user)
+        return true
+      }
+      return false
+    } catch (error) {
+      console.error("登录失败:", error)
+      return false
+    }
+  }
+
+  const logout = () => {
+    setUser(null)
+    removeUserFromStorage()
+    router.push("/login")
+  }
+
+  return <AuthContext.Provider value={{ user, login, logout, loading }}>{children}</AuthContext.Provider>
+}
 
 export function useAuth() {
   const context = useContext(AuthContext)
@@ -20,62 +69,4 @@ export function useAuth() {
     throw new Error("useAuth must be used within an AuthProvider")
   }
   return context
-}
-
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<Profile | null>(null)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const router = useRouter()
-  const pathname = usePathname()
-
-  useEffect(() => {
-    // 检查用户登录状态
-    const checkAuth = () => {
-      if (isLoggedIn()) {
-        const userInfo = getUserInfo()
-        if (userInfo) {
-          setUser(userInfo)
-          setIsAuthenticated(true)
-        } else {
-          // 如果没有用户信息，清除登录状态
-          clearUserInfo()
-          setIsAuthenticated(false)
-        }
-      } else {
-        setIsAuthenticated(false)
-      }
-      setIsLoading(false)
-    }
-
-    checkAuth()
-  }, [])
-
-  useEffect(() => {
-    // 如果用户未登录且不在登录页面，跳转到登录页
-    if (!isLoading && !isAuthenticated && !pathname.startsWith("/login")) {
-      router.push("/login")
-    }
-  }, [isAuthenticated, isLoading, pathname, router])
-
-  const logout = () => {
-    clearUserInfo()
-    setUser(null)
-    setIsAuthenticated(false)
-    router.push("/login")
-  }
-
-  // 如果正在加载，显示加载状态
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
-          <p className="mt-4 text-gray-600">加载中...</p>
-        </div>
-      </div>
-    )
-  }
-
-  return <AuthContext.Provider value={{ user, isAuthenticated, logout }}>{children}</AuthContext.Provider>
 }

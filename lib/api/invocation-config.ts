@@ -6,7 +6,7 @@ import type {
 } from "@/lib/types/llm_invocation"
 
 export const invocationConfigApi = {
-  // 获取调用配置列表
+  // 获取调用配置列表（分页）
   getList: (params?: PaginationParams) => {
     return apiRequest.get<PaginatedResponse<InvocationConfig>>("/invocation_config", params)
   },
