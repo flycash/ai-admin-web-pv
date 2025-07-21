@@ -2,19 +2,15 @@ import { InvocationConfigForm } from "../../components/invocation-config-form"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import {use} from "react";
 
-interface EditInvocationConfigPageProps {
-  params: {
-    id: string
-  }
-}
-
-export default function EditInvocationConfigPage({ params }: EditInvocationConfigPageProps) {
+export default function EditInvocationConfigPage({ params }: { params: Promise<{ id: string }> }) {
+  const {id} = use(params)
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
-          <Link href={`/dashboard/invocation-config/${params.id}`}>
+          <Link href={`/dashboard/invocation-config/${id}/edit`}>
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
@@ -23,7 +19,7 @@ export default function EditInvocationConfigPage({ params }: EditInvocationConfi
           <p className="text-muted-foreground">修改调用配置信息</p>
         </div>
       </div>
-      <InvocationConfigForm id={params.id} />
+      <InvocationConfigForm id={parseInt(id)} />
     </div>
   )
 }

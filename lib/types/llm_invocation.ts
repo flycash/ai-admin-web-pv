@@ -1,6 +1,10 @@
 export interface InvocationConfig {
+  // 调用配置的 ID
+  id: number
   // 业务配置 ID
   bizID: number
+  bizName: string
+
   name: string
   description: string
   versions: ConfigVersion[]

@@ -31,6 +31,7 @@ import { toast } from "sonner"
 import type { InvocationConfig } from "@/lib/types/llm_invocation"
 import {http} from "@/lib/http";
 import {DataList, Result} from "@/lib/types/result";
+import {formatLocaleTime} from "@/lib/utils/format";
 
 export function InvocationConfigTable() {
   const [configs, setConfigs] = useState<InvocationConfig[]>([])
@@ -69,31 +70,6 @@ export function InvocationConfigTable() {
     } finally {
       setLoading(false)
     }
-  }
-
-  // 删除调用配置
-  const handleDelete = async (id: string, name: string) => {
-    // try {
-    //   setDeleting(id)
-    //   const result = await invocationConfigApi.delete(id)
-    //
-    //   if (result.code === 0) {
-    //     toast.success(`调用配置 "${name}" 删除成功`)
-    //     // 如果当前页没有数据了，回到上一页
-    //     if (configs.length === 1 && pagination.page > 1) {
-    //       await fetchConfigs(pagination.page - 1, pagination.pageSize)
-    //     } else {
-    //       await fetchConfigs(pagination.page, pagination.pageSize)
-    //     }
-    //   } else {
-    //     toast.error(result.msg || "删除调用配置失败")
-    //   }
-    // } catch (error) {
-    //   console.error("删除调用配置失败:", error)
-    //   toast.error("删除调用配置失败，请稍后重试")
-    // } finally {
-    //   setDeleting(null)
-    // }
   }
 
   // 页面变化处理
@@ -184,16 +160,6 @@ export function InvocationConfigTable() {
     return items
   }
 
-  // 格式化时间
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleString("zh-CN")
-  }
-
-  // 获取活跃版本数量
-  const getActiveVersionsCount = (config: InvocationConfig) => {
-    return config.versions?.filter((v) => v.status === "ACTIVE").length || 0
-  }
-
   if (loading) {
     return (
       <div className="space-y-4">
@@ -256,12 +222,11 @@ export function InvocationConfigTable() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>ID</TableHead>
               <TableHead>名称</TableHead>
               <TableHead>描述</TableHead>
               <TableHead>业务配置ID</TableHead>
-              <TableHead>版本数</TableHead>
-              <TableHead>活跃版本</TableHead>
-              <TableHead>创建时间</TableHead>
+              <TableHead>更新时间</TableHead>
               <TableHead className="text-right">操作</TableHead>
             </TableRow>
           </TableHeader>
@@ -274,7 +239,10 @@ export function InvocationConfigTable() {
               </TableRow>
             ) : (
               configs.map((config) => (
-                <TableRow key={config.bizID}>
+                <TableRow key={config.id}>
+                  <TableCell>
+                    <div className="font-medium">{config.id}</div>
+                  </TableCell>
                   <TableCell>
                     <div className="font-medium">{config.name}</div>
                   </TableCell>
@@ -287,66 +255,22 @@ export function InvocationConfigTable() {
                     <Badge variant="outline">{config.bizID}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{config.versions?.length || 0}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={getActiveVersionsCount(config) > 0 ? "default" : "secondary"}>
-                      {getActiveVersionsCount(config)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">{formatDate(config.ctime)}</div>
+                    <div className="text-sm">{formatLocaleTime(config.utime)}</div>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button variant="ghost" size="icon" asChild>
-                        <Link href={`/dashboard/invocation-config/${config.bizID}`}>
+                        <Link href={`/dashboard/invocation-config/${config.id}`}>
                           <Eye className="h-4 w-4" />
                           <span className="sr-only">查看</span>
                         </Link>
                       </Button>
                       <Button variant="ghost" size="icon" asChild>
-                        <Link href={`/dashboard/invocation-config/${config.bizID}/edit`}>
+                        <Link href={`/dashboard/invocation-config/${config.id}/edit`}>
                           <Edit2 className="h-4 w-4" />
                           <span className="sr-only">编辑</span>
                         </Link>
                       </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" disabled={deleting === config.bizID.toString()}>
-                            {deleting === config.bizID.toString() ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                            <span className="sr-only">删除</span>
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>删除调用配置</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              确定要删除调用配置 "{config.name}" 吗？此操作无法撤销，同时会删除该配置下的所有版本。
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>取消</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDelete(config.bizID.toString(), config.name)}
-                              disabled={deleting === config.bizID.toString()}
-                            >
-                              {deleting === config.bizID.toString() ? (
-                                <>
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  删除中...
-                                </>
-                              ) : (
-                                "删除"
-                              )}
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
                     </div>
                   </TableCell>
                 </TableRow>

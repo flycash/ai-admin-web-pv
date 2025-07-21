@@ -1,11 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import Link from "next/link"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   AlertDialog,
@@ -18,6 +19,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
   Pagination,
   PaginationContent,
@@ -27,120 +29,140 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
-import { Edit2, Trash2, Eye, Loader2 } from "lucide-react"
-import { configVersionApi, type PaginatedResponse } from "@/lib/api"
-import { toast } from "sonner"
-import type { ConfigVersion } from "@/lib/types/llm_invocation"
+import { Edit, Eye, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react"
+import { http } from "@/lib/http"
+import { useToast } from "@/hooks/use-toast"
+import type {ConfigVersion} from "@/lib/types/llm_invocation"
+import {DataList, Result} from "@/lib/types/result";
 
-interface ConfigVersionTableProps {
-  configId: string
-  onVersionChange?: () => void
+interface PaginationData {
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
 }
 
-export function ConfigVersionTable({ configId, onVersionChange }: ConfigVersionTableProps) {
+interface ConfigVersionTableProps {
+  configId: number
+}
+
+export function ConfigVersionTable({ configId }: ConfigVersionTableProps) {
   const [versions, setVersions] = useState<ConfigVersion[]>([])
   const [loading, setLoading] = useState(true)
-  const [deleting, setDeleting] = useState<string | null>(null)
-  const [toggling, setToggling] = useState<string | null>(null)
-  const [pagination, setPagination] = useState({
+  const [searchTerm, setSearchTerm] = useState("")
+  const [pagination, setPagination] = useState<PaginationData>({
     page: 1,
     pageSize: 10,
     total: 0,
     totalPages: 0,
   })
+  const router = useRouter()
+  const { toast } = useToast()
 
-  // 获取版本列表
-  const fetchVersions = async (page = 1, pageSize = 10) => {
+  const fetchVersions = async (page = 1, search = "") => {
     try {
       setLoading(true)
-      const result = await configVersionApi.getList(configId, { page, pageSize })
 
+      const offset = (page-1) * pagination.pageSize
+
+      const resp = await http.post<Result<DataList<ConfigVersion>>>(`/invocation-configs/versions/list`, {invID: configId, offset: offset, limit: pagination.pageSize})
+      const result = resp.data
       if (result.code === 0) {
-        const data = result.data as PaginatedResponse<ConfigVersion>
-        setVersions(data.data)
+        setVersions(result.data.list || [])
         setPagination({
-          page: data.page,
-          pageSize: data.pageSize,
-          total: data.total,
-          totalPages: data.totalPages,
+          page: page + 1,
+          pageSize: pagination.pageSize,
+          total: result.data.total || 0,
+          totalPages: Math.ceil(result.data.total/pagination.pageSize),
         })
       } else {
-        toast.error(result.msg || "获取版本列表失败")
+        toast({
+          title: "获取数据失败",
+          description: result.msg || "无法获取配置版本列表",
+          variant: "destructive",
+        })
       }
     } catch (error) {
-      console.error("获取版本列表失败:", error)
-      toast.error("获取版本列表失败，请稍后重试")
+      console.error("获取配置版本列表失败:", error)
+      toast({
+        title: "获取数据失败",
+        description: "网络错误，请稍后重试",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
   }
 
-  // 切换版本状态
-  const handleToggleStatus = async (versionId: string, currentStatus: string) => {
-    try {
-      setToggling(versionId)
-      const newStatus = currentStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE"
-      const result = await configVersionApi.toggleStatus(configId, versionId, newStatus)
-
-      if (result.code === 0) {
-        toast.success(`版本状态已${newStatus === "ACTIVE" ? "激活" : "停用"}`)
-        await fetchVersions(pagination.page, pagination.pageSize)
-        onVersionChange?.()
-      } else {
-        toast.error(result.msg || "切换版本状态失败")
-      }
-    } catch (error) {
-      console.error("切换版本状态失败:", error)
-      toast.error("切换版本状态失败，请稍后重试")
-    } finally {
-      setToggling(null)
-    }
-  }
-
-  // 删除版本
-  const handleDelete = async (versionId: string) => {
-    try {
-      setDeleting(versionId)
-      const result = await configVersionApi.delete(configId, versionId)
-
-      if (result.code === 0) {
-        toast.success("版本删除成功")
-        // 如果当前页没有数据了，回到上一页
-        if (versions.length === 1 && pagination.page > 1) {
-          await fetchVersions(pagination.page - 1, pagination.pageSize)
-        } else {
-          await fetchVersions(pagination.page, pagination.pageSize)
-        }
-        onVersionChange?.()
-      } else {
-        toast.error(result.msg || "删除版本失败")
-      }
-    } catch (error) {
-      console.error("删除版本失败:", error)
-      toast.error("删除版本失败，请稍后重试")
-    } finally {
-      setDeleting(null)
-    }
-  }
-
-  // 页面变化处理
-  const handlePageChange = (page: number) => {
-    if (page >= 1 && page <= pagination.totalPages) {
-      fetchVersions(page, pagination.pageSize)
-    }
-  }
-
-  // 初始化加载
   useEffect(() => {
-    fetchVersions()
+    fetchVersions(1, searchTerm)
   }, [configId])
 
-  // 格式化时间
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleString("zh-CN")
+  const handleSearch = () => {
+    fetchVersions(1, searchTerm)
   }
 
-  // 生成分页项
+  const handlePageChange = (page: number) => {
+    fetchVersions(page, searchTerm)
+  }
+
+  const handleDelete = async (versionId: number) => {
+    try {
+      const result = await http.delete(`/config-versions/${versionId}`)
+      if (result.code === 0) {
+        toast({
+          title: "删除成功",
+          description: "配置版本已删除",
+        })
+        // 如果当前页没有数据了，回到上一页
+        const newTotal = pagination.total - 1
+        const newTotalPages = Math.ceil(newTotal / pagination.pageSize)
+        const targetPage = pagination.page > newTotalPages ? Math.max(1, newTotalPages) : pagination.page
+        fetchVersions(targetPage, searchTerm)
+      } else {
+        toast({
+          title: "删除失败",
+          description: result.msg || "删除配置版本失败",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("删除配置版本失败:", error)
+      toast({
+        title: "删除失败",
+        description: "网络错误，请稍后重试",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleToggleStatus = async (versionId: number, currentStatus: number) => {
+    try {
+      const newStatus = currentStatus === 1 ? 0 : 1
+      const result = await http.patch(`/config-versions/${versionId}/status`, { status: newStatus })
+      if (result.code === 0) {
+        toast({
+          title: "状态更新成功",
+          description: `配置版本已${newStatus === 1 ? "启用" : "禁用"}`,
+        })
+        fetchVersions(pagination.page, searchTerm)
+      } else {
+        toast({
+          title: "状态更新失败",
+          description: result.msg || "更新配置版本状态失败",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("更新配置版本状态失败:", error)
+      toast({
+        title: "状态更新失败",
+        description: "网络错误，请稍后重试",
+        variant: "destructive",
+      })
+    }
+  }
+
   const generatePaginationItems = () => {
     const items = []
     const { page, totalPages } = pagination
@@ -156,7 +178,6 @@ export function ConfigVersionTable({ configId, onVersionChange }: ConfigVersionT
         )
       }
     } else {
-      // 复杂分页逻辑
       items.push(
         <PaginationItem key={1}>
           <PaginationLink onClick={() => handlePageChange(1)} isActive={page === 1} className="cursor-pointer">
@@ -212,203 +233,185 @@ export function ConfigVersionTable({ configId, onVersionChange }: ConfigVersionT
     return items
   }
 
-  if (loading) {
-    return (
-      <div className="space-y-4">
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>配置版本</CardTitle>
+            <CardDescription>管理此调用配置的版本</CardDescription>
+          </div>
+          <Button onClick={() => router.push(`/dashboard/invocation-config/${configId}/versions/new`)}>
+            <Plus className="mr-2 h-4 w-4" />
+            新建版本
+          </Button>
+        </div>
+        <div className="flex items-center space-x-2">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="搜索版本名称..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              className="pl-8"
+            />
+          </div>
+          <Button onClick={handleSearch} variant="outline">
+            搜索
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
         <div className="rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>版本号</TableHead>
+                <TableHead>ID</TableHead>
+                <TableHead>版本名称</TableHead>
                 <TableHead>模型</TableHead>
                 <TableHead>温度</TableHead>
-                <TableHead>TopN</TableHead>
-                <TableHead>最大令牌</TableHead>
+                <TableHead>最大Token</TableHead>
                 <TableHead>状态</TableHead>
                 <TableHead>创建时间</TableHead>
                 <TableHead className="text-right">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {Array.from({ length: pagination.pageSize }).map((_, index) => (
-                <TableRow key={index}>
-                  <TableCell>
-                    <Skeleton className="h-4 w-16" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-12" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-12" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-16" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-16" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-24" />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Skeleton className="h-8 w-8" />
-                      <Skeleton className="h-8 w-8" />
-                      <Skeleton className="h-8 w-8" />
-                    </div>
+              {loading ? (
+                Array.from({ length: 5 }).map((_, index) => (
+                  <TableRow key={index}>
+                    <TableCell>
+                      <Skeleton className="h-4 w-8" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-20" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-12" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-16" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-16" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-20" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-20" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : versions.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    暂无版本数据
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                versions.map((version) => (
+                  <TableRow key={version.id}>
+                    <TableCell className="font-medium">{version.id}</TableCell>
+                    <TableCell>{version.name}</TableCell>
+                    <TableCell>{version.model}</TableCell>
+                    <TableCell>{version.temperature}</TableCell>
+                    <TableCell>{version.maxTokens}</TableCell>
+                    <TableCell>
+                      <Badge variant={version.status === 1 ? "default" : "secondary"}>
+                        {version.status === 1 ? "启用" : "禁用"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{new Date(version.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() =>
+                              router.push(`/dashboard/invocation-config/${configId}/versions/${version.id}`)
+                            }
+                          >
+                            <Eye className="mr-2 h-4 w-4" />
+                            查看详情
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              router.push(`/dashboard/invocation-config/${configId}/versions/${version.id}/edit`)
+                            }
+                          >
+                            <Edit className="mr-2 h-4 w-4" />
+                            编辑
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleToggleStatus(version.id, version.status)}>
+                            {version.status === 1 ? "禁用" : "启用"}
+                          </DropdownMenuItem>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                删除
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>确认删除</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  确定要删除配置版本 "{version.name}" 吗？此操作无法撤销。
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>取消</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDelete(version.id)}>删除</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </div>
-      </div>
-    )
-  }
 
-  return (
-    <div className="space-y-4">
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>版本号</TableHead>
-              <TableHead>模型</TableHead>
-              <TableHead>温度</TableHead>
-              <TableHead>TopN</TableHead>
-              <TableHead>最大令牌</TableHead>
-              <TableHead>状态</TableHead>
-              <TableHead>创建时间</TableHead>
-              <TableHead className="text-right">操作</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {versions.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                  暂无版本。创建第一个版本以开始使用。
-                </TableCell>
-              </TableRow>
-            ) : (
-              versions.map((version) => (
-                <TableRow key={version.id}>
-                  <TableCell>
-                    <Badge variant="outline">v{version.version}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-medium">{version.model}</span>
-                  </TableCell>
-                  <TableCell>{version.temperature}</TableCell>
-                  <TableCell>{version.topN}</TableCell>
-                  <TableCell>{version.maxTokens}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        checked={version.status === "ACTIVE"}
-                        onCheckedChange={() => handleToggleStatus(version.id.toString(), version.status)}
-                        disabled={toggling === version.id.toString()}
-                      />
-                      <Badge variant={version.status === "ACTIVE" ? "default" : "secondary"}>
-                        {version.status === "ACTIVE" ? "活跃" : "停用"}
-                      </Badge>
-                      {toggling === version.id.toString() && <Loader2 className="h-4 w-4 animate-spin" />}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">{formatDate(version.ctime)}</div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="icon" asChild>
-                        <Link href={`/dashboard/invocation-config/${configId}/versions/${version.id}`}>
-                          <Eye className="h-4 w-4" />
-                          <span className="sr-only">查看</span>
-                        </Link>
-                      </Button>
-                      <Button variant="ghost" size="icon" asChild>
-                        <Link href={`/dashboard/invocation-config/${configId}/versions/${version.id}/edit`}>
-                          <Edit2 className="h-4 w-4" />
-                          <span className="sr-only">编辑</span>
-                        </Link>
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" disabled={deleting === version.id.toString()}>
-                            {deleting === version.id.toString() ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                            <span className="sr-only">删除</span>
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>删除版本</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              确定要删除版本 v{version.version} 吗？此操作无法撤销。
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>取消</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDelete(version.id.toString())}
-                              disabled={deleting === version.id.toString()}
-                            >
-                              {deleting === version.id.toString() ? (
-                                <>
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  删除中...
-                                </>
-                              ) : (
-                                "删除"
-                              )}
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* 分页组件 */}
-      {pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
-            显示第 {(pagination.page - 1) * pagination.pageSize + 1} -{" "}
-            {Math.min(pagination.page * pagination.pageSize, pagination.total)} 条，共 {pagination.total} 条
+        {!loading && versions.length > 0 && (
+          <div className="flex items-center justify-between space-x-2 py-4">
+            <div className="text-sm text-muted-foreground">
+              显示 {(pagination.page - 1) * pagination.pageSize + 1} 到{" "}
+              {Math.min(pagination.page * pagination.pageSize, pagination.total)} 条，共 {pagination.total} 条记录
+            </div>
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => handlePageChange(pagination.page - 1)}
+                    className={pagination.page <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+                {generatePaginationItems()}
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => handlePageChange(pagination.page + 1)}
+                    className={
+                      pagination.page >= pagination.totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"
+                    }
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
           </div>
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  onClick={() => handlePageChange(pagination.page - 1)}
-                  className={pagination.page <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                />
-              </PaginationItem>
-
-              {generatePaginationItems()}
-
-              <PaginationItem>
-                <PaginationNext
-                  onClick={() => handlePageChange(pagination.page + 1)}
-                  className={
-                    pagination.page >= pagination.totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"
-                  }
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
-      )}
-    </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }

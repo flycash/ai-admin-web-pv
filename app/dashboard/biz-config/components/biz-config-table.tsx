@@ -30,7 +30,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import {BizConfig} from "@/lib/types/biz_config";
 import {http} from "@/lib/http";
-import {Result} from "@/lib/types/result";
+import {DataList, Result} from "@/lib/types/result";
 
 interface PaginatedResponse<T> {
   data: T[]
@@ -55,10 +55,7 @@ export function BizConfigTable() {
   const fetchConfigs = async (page = 1, pageSize = 10) => {
     try {
       setLoading(true)
-      const resp = await http.post<Result<{
-        cfgs: BizConfig[],
-        total: number,
-      }>>("/biz-configs/list", {
+      const resp = await http.post<Result<DataList<BizConfig>>>("/biz-configs/list", {
         offset: (page-1) * pageSize,
         limit: pageSize,
       })
@@ -67,7 +64,7 @@ export function BizConfigTable() {
 
       if (result.code === 0) {
         // 如果 API 返回分页数据
-        setConfigs(configs.concat(result.data?.cfgs || []))
+        setConfigs(configs.concat(result.data?.list || []))
         setPagination({
           page,
           pageSize,
@@ -273,12 +270,12 @@ export function BizConfigTable() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="icon" asChild>
-                        <Link href={`/dashboard/biz-config/${config.id}`}>
-                          <Eye className="h-4 w-4" />
-                          <span className="sr-only">查看</span>
-                        </Link>
-                      </Button>
+                      {/*<Button variant="ghost" size="icon" asChild>*/}
+                      {/*  <Link href={`/dashboard/biz-config/${config.id}`}>*/}
+                      {/*    <Eye className="h-4 w-4" />*/}
+                      {/*    <span className="sr-only">查看</span>*/}
+                      {/*  </Link>*/}
+                      {/*</Button>*/}
                       <Button variant="ghost" size="icon" asChild>
                         <Link href={`/dashboard/biz-config/${config.id}/edit`}>
                           <Edit2 className="h-4 w-4" />

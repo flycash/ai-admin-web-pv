@@ -1,11 +1,9 @@
-import { BizConfigDetail } from "../components/biz-config-detail"
+"use client"
 
-interface BizConfigDetailPageProps {
-  params: {
-    id: string
-  }
-}
+import { BizConfigForm } from "@/app/dashboard/biz-config/components/biz-config-form"
+import {use} from "react";
 
-export default function BizConfigDetailPage({ params }: BizConfigDetailPageProps) {
-  return <BizConfigDetail id={params.id} />
+export default function EditBizConfigPage({ params }: { params: Promise<{ id: string }> }) {
+  const {id} = use(params)
+  return <BizConfigForm id={parseInt(id)} />
 }

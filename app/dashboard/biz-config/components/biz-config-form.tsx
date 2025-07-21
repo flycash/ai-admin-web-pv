@@ -13,7 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { bizConfigApi } from "@/lib/api"
+import {http} from "@/lib/http";
+import {Result} from "@/lib/types/result";
+import type {BizConfig} from "@/lib/types";
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -79,7 +81,8 @@ export function BizConfigForm({ id }: BizConfigFormProps) {
 
     setIsLoadingData(true)
     try {
-      const result = await bizConfigApi.get(Number.parseInt(id))
+      const resp = await http.post<Result<BizConfig>>("/biz-configs/detail", {id: id})
+      const result = resp.data
       if (result.code === 0 && result.data) {
         const config = result.data
         form.reset({
@@ -110,19 +113,10 @@ export function BizConfigForm({ id }: BizConfigFormProps) {
   const onSubmit = async (values: FormData) => {
     setIsLoading(true)
     try {
-      if (id) {
-        await bizConfigApi.update(Number.parseInt(id), {
-          name: values.name,
-          config: values.config,
-        })
-      } else {
-        await bizConfigApi.create({
-          name: values.name,
-          ownerID: values.ownerID,
-          ownerType: values.ownerType,
-          config: values.config,
-        })
-      }
+      await http.post<Result<number>>("/biz-configs/save", {
+        id: id,
+        ...values
+      })
       toast({
         title: "保存成功",
         description: "业务配置已保存",
