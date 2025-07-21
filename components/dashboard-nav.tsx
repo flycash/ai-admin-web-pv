@@ -21,8 +21,8 @@ export function DashboardNav({ className, collapsed = false }: DashboardNavProps
       icon: <Settings className="h-5 w-5" />,
     },
     {
-      title: "提示词",
-      href: "/dashboard/prompts",
+      title: "调用配置",
+      href: "/dashboard/invocation-config",
       icon: <Sparkles className="h-5 w-5" />,
     },
   ]

@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { createContext, useContext, useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { getUserInfo, clearUserInfo, isLoggedIn } from "@/lib/utils/user"
@@ -54,8 +53,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // 如果用户未登录且不在登录页面，跳转到登录页
-    if (!isLoading && !isAuthenticated && !pathname.startsWith("/mock/login")) {
-      router.push("/mock/login")
+    if (!isLoading && !isAuthenticated && !pathname.startsWith("/login")) {
+      router.push("/login")
     }
   }, [isAuthenticated, isLoading, pathname, router])
 
@@ -63,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearUserInfo()
     setUser(null)
     setIsAuthenticated(false)
-    router.push("/mock/login")
+    router.push("/login")
   }
 
   // 如果正在加载，显示加载状态

@@ -5,13 +5,12 @@ import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
-import { http } from "@/lib/http"
-import { saveUserInfo } from "@/lib/utils/user"
-import type { LoginResponse } from "@/lib/types/user"
+import { userApi } from "@/lib/api"
+import { setUserInfo } from "@/lib/utils/user"
 
 export default function LoginPage() {
   const [username, setUsername] = useState("")
@@ -25,38 +24,29 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      const response = await http.post<LoginResponse>("/api/auth/login", {
-        username,
-        password,
-      })
+      const result = await userApi.login({ username, password })
 
-      const result = response.data
-
-      if (result.code === 0) {
-        // 登录成功
-        saveUserInfo(result.data)
+      if (result.success && result.data) {
+        // 保存用户信息和token
+        setUserInfo(result.data.user, result.data.token)
 
         toast({
           title: "登录成功",
-          description: `欢迎回来，${result.data.nickname}！`,
-          variant: "default",
+          description: `欢迎回来，${result.data.user.name}！`,
         })
 
-        // 跳转到仪表板
         router.push("/dashboard")
       } else {
-        // 登录失败
         toast({
           title: "登录失败",
-          description: result.msg,
+          description: result.message || "用户名或密码错误",
           variant: "destructive",
         })
       }
     } catch (error) {
-      console.error("Login error:", error)
       toast({
         title: "登录失败",
-        description: "网络错误，请重试",
+        description: "网络错误，请稍后重试",
         variant: "destructive",
       })
     } finally {
@@ -68,27 +58,28 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-
-      await http.post<LoginResponse>("/mock/login")
       // 模拟自动登录
-      const mockProfile = {
-        id: 1,
-        nickname: "模拟用户",
-        avatar: "",
+      const mockUser = {
+        id: "1",
+        name: "管理员",
+        username: "admin",
+        email: "admin@example.com",
+        role: "admin" as const,
+        avatar: "/placeholder-user.jpg",
       }
 
-      saveUserInfo(mockProfile)
+      const mockToken = "mock-jwt-token-" + Date.now()
+
+      // 保存用户信息
+      setUserInfo(mockUser, mockToken)
 
       toast({
         title: "自动登录成功",
-        description: `欢迎回来，${mockProfile.nickname}！`,
-        variant: "default",
+        description: `欢迎回来，${mockUser.name}！`,
       })
 
-      // 跳转到仪表板
-      router.push("/dashboard/biz-config")
+      router.push("/dashboard")
     } catch (error) {
-      console.error("Auto login error:", error)
       toast({
         title: "自动登录失败",
         description: "请手动登录",
@@ -100,11 +91,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">登录</CardTitle>
-          <CardDescription className="text-center">输入您的凭据以访问您的账户</CardDescription>
+          <CardTitle className="text-2xl text-center">AI 管理后台</CardTitle>
+          <CardDescription className="text-center">请登录您的账户</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <form onSubmit={handleLogin} className="space-y-4">
@@ -144,21 +135,9 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full bg-transparent"
-            onClick={handleAutoLogin}
-            disabled={isLoading}
-          >
-            {isLoading ? "登录中..." : "自动登录（演示）"}
+          <Button variant="outline" className="w-full bg-transparent" onClick={handleAutoLogin} disabled={isLoading}>
+            {isLoading ? "登录中..." : "一键登录（演示）"}
           </Button>
-
-          <div className="text-center text-sm text-gray-600">
-            <p>演示账户：</p>
-            <p>用户名：admin</p>
-            <p>密码：password</p>
-          </div>
         </CardContent>
       </Card>
     </div>
