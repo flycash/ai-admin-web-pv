@@ -23,11 +23,11 @@ export interface ConfigVersion {
   // Prompt 内容
   content: string
   // 系统提示词
-  systemPrompt: string
+  systemContent: string
   // 使用的大模型的 ID
   modelID: number
-  // 大模型调用中的 top N 参数
-  topN: number
+  // 大模型调用中的 top P 参数
+  topP: number
   // 大模型调用中的 最大 token 数量
   maxTokens: number
   // 大模型调用中的 temperature 参数
