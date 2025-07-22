@@ -8,7 +8,7 @@ import Link from "next/link"
 import { http } from "@/lib/http"
 import { useToast } from "@/hooks/use-toast"
 import { Skeleton } from "@/components/ui/skeleton"
-import type { ConfigVersion } from "@/lib/types/llm_invocation"
+import type { ConfigVersion } from "@/lib/types/invocation_config"
 import type { Result } from "@/lib/types/result"
 
 export default function EditConfigVersionPage({

@@ -28,7 +28,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"
 import { toast } from "sonner"
-import type { InvocationConfig } from "@/lib/types/llm_invocation"
+import type { InvocationConfig } from "@/lib/types/invocation_config"
 import {http} from "@/lib/http";
 import {DataList, Result} from "@/lib/types/result";
 import {formatLocaleTime} from "@/lib/utils/format";

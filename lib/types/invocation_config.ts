@@ -21,9 +21,9 @@ export interface ConfigVersion {
   invID: number
   version: string
   // Prompt 内容
-  content: string
+  prompt: string
   // 系统提示词
-  systemContent: string
+  systemPrompt: string
   // 使用的大模型的 ID
   modelID: number
   // 大模型调用中的 top P 参数

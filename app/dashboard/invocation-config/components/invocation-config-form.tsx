@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Loader2, Save } from "lucide-react"
 import { http } from "@/lib/http"
 import { useToast } from "@/hooks/use-toast"
-import type { InvocationConfig } from "@/lib/types/llm_invocation"
+import type { InvocationConfig } from "@/lib/types/invocation_config"
 import type { BizConfig } from "@/lib/types/biz_config"
 import {DataList, Result} from "@/lib/types/result";
 

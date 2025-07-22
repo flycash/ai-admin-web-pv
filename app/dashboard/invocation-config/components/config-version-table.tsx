@@ -32,8 +32,9 @@ import {
 import { Edit, Eye, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react"
 import { http } from "@/lib/http"
 import { useToast } from "@/hooks/use-toast"
-import type {ConfigVersion} from "@/lib/types/llm_invocation"
+import type {ConfigVersion} from "@/lib/types/invocation_config"
 import {DataList, Result} from "@/lib/types/result";
+import {formatLocaleTime} from "@/lib/utils/format";
 
 interface PaginationData {
   page: number
@@ -106,63 +107,6 @@ export function ConfigVersionTable({ configId }: ConfigVersionTableProps) {
     fetchVersions(page, searchTerm)
   }
 
-  const handleDelete = async (versionId: number) => {
-    try {
-      const result = await http.delete(`/config-versions/${versionId}`)
-      if (result.code === 0) {
-        toast({
-          title: "删除成功",
-          description: "配置版本已删除",
-        })
-        // 如果当前页没有数据了，回到上一页
-        const newTotal = pagination.total - 1
-        const newTotalPages = Math.ceil(newTotal / pagination.pageSize)
-        const targetPage = pagination.page > newTotalPages ? Math.max(1, newTotalPages) : pagination.page
-        fetchVersions(targetPage, searchTerm)
-      } else {
-        toast({
-          title: "删除失败",
-          description: result.msg || "删除配置版本失败",
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      console.error("删除配置版本失败:", error)
-      toast({
-        title: "删除失败",
-        description: "网络错误，请稍后重试",
-        variant: "destructive",
-      })
-    }
-  }
-
-  const handleToggleStatus = async (versionId: number, currentStatus: number) => {
-    try {
-      const newStatus = currentStatus === 1 ? 0 : 1
-      const result = await http.patch(`/config-versions/${versionId}/status`, { status: newStatus })
-      if (result.code === 0) {
-        toast({
-          title: "状态更新成功",
-          description: `配置版本已${newStatus === 1 ? "启用" : "禁用"}`,
-        })
-        fetchVersions(pagination.page, searchTerm)
-      } else {
-        toast({
-          title: "状态更新失败",
-          description: result.msg || "更新配置版本状态失败",
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      console.error("更新配置版本状态失败:", error)
-      toast({
-        title: "状态更新失败",
-        description: "网络错误，请稍后重试",
-        variant: "destructive",
-      })
-    }
-  }
-
   const generatePaginationItems = () => {
     const items = []
     const { page, totalPages } = pagination
@@ -229,8 +173,11 @@ export function ConfigVersionTable({ configId }: ConfigVersionTableProps) {
         )
       }
     }
-
     return items
+  }
+
+  const handleActivate = (versionID: number) => {
+
   }
 
   return (
@@ -268,12 +215,11 @@ export function ConfigVersionTable({ configId }: ConfigVersionTableProps) {
             <TableHeader>
               <TableRow>
                 <TableHead>ID</TableHead>
-                <TableHead>版本名称</TableHead>
-                <TableHead>模型</TableHead>
+                <TableHead>版本号</TableHead>
                 <TableHead>温度</TableHead>
                 <TableHead>最大Token</TableHead>
                 <TableHead>状态</TableHead>
-                <TableHead>创建时间</TableHead>
+                <TableHead>更新时间</TableHead>
                 <TableHead className="text-right">操作</TableHead>
               </TableRow>
             </TableHeader>
@@ -317,16 +263,15 @@ export function ConfigVersionTable({ configId }: ConfigVersionTableProps) {
                 versions.map((version) => (
                   <TableRow key={version.id}>
                     <TableCell className="font-medium">{version.id}</TableCell>
-                    <TableCell>{version.name}</TableCell>
-                    <TableCell>{version.model}</TableCell>
+                    <TableCell>{version.version}</TableCell>
                     <TableCell>{version.temperature}</TableCell>
                     <TableCell>{version.maxTokens}</TableCell>
                     <TableCell>
-                      <Badge variant={version.status === 1 ? "default" : "secondary"}>
-                        {version.status === 1 ? "启用" : "禁用"}
+                      <Badge variant={"default"}>
+                        {version.status}
                       </Badge>
                     </TableCell>
-                    <TableCell>{new Date(version.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell>{formatLocaleTime(version.utime)}</TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -351,26 +296,24 @@ export function ConfigVersionTable({ configId }: ConfigVersionTableProps) {
                             <Edit className="mr-2 h-4 w-4" />
                             编辑
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleToggleStatus(version.id, version.status)}>
-                            {version.status === 1 ? "禁用" : "启用"}
-                          </DropdownMenuItem>
+
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                删除
+                                激活
                               </DropdownMenuItem>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>确认删除</AlertDialogTitle>
+                                <AlertDialogTitle>确认激活</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  确定要删除配置版本 "{version.name}" 吗？此操作无法撤销。
+                                  确定要激活配置版本 "{version.version}" 吗？。
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>取消</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDelete(version.id)}>删除</AlertDialogAction>
+                                <AlertDialogAction onClick={() => handleActivate(version.id)}>激活</AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>

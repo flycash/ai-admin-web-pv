@@ -10,7 +10,7 @@ import { ArrowLeft, Edit } from "lucide-react"
 import { http } from "@/lib/http"
 import { useToast } from "@/hooks/use-toast"
 import { ConfigVersionTable } from "./config-version-table"
-import type { InvocationConfig } from "@/lib/types/llm_invocation"
+import type { InvocationConfig } from "@/lib/types/invocation_config"
 import {Result} from "@/lib/types/result";
 import {formatLocaleTime} from "@/lib/utils/format";
 import Link from "next/link";
