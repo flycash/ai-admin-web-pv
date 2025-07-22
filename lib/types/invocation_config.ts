@@ -26,6 +26,9 @@ export interface ConfigVersion {
   systemPrompt: string
   // 使用的大模型的 ID
   modelID: number
+  modelName: string
+  modelProviderID: number
+  modelProviderName: string
   // 大模型调用中的 top P 参数
   topP: number
   // 大模型调用中的 最大 token 数量

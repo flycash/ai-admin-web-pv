@@ -24,7 +24,7 @@ export default function EditConfigVersionPage({
   useEffect(() => {
     const fetchVersion = async () => {
       try {
-        const resp = await http.get<Result<ConfigVersion>>(`/invocation-configs/versions/${versionId}`)
+        const resp = await http.post<Result<ConfigVersion>>(`/invocation-configs/versions/detail`, {id: parseInt(versionId)})
         const result = resp.data
 
         if (result.code === 0) {

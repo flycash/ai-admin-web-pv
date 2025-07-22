@@ -158,41 +158,6 @@ export function ConfigVersionForm({ invocationConfigId, version }: ConfigVersion
     }
   }
 
-  async function handleActivate() {
-    if (!version) return
-
-    setIsActivating(true)
-
-    try {
-      const resp = await http.post<Result<void>>(`/invocation-configs/versions/${version.id}/activate`)
-      const result = resp.data
-
-      if (result.code === 0) {
-        toast({
-          title: "激活成功",
-          description: "配置版本已激活，现在将使用此版本的配置",
-        })
-        // 刷新页面或重新获取数据
-        window.location.reload()
-      } else {
-        toast({
-          title: "激活失败",
-          description: result.msg || "激活配置版本失败",
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      console.error("激活配置版本失败:", error)
-      toast({
-        title: "激活失败",
-        description: "网络错误，请稍后重试",
-        variant: "destructive",
-      })
-    } finally {
-      setIsActivating(false)
-    }
-  }
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -408,20 +373,6 @@ export function ConfigVersionForm({ invocationConfigId, version }: ConfigVersion
         </Card>
 
         <div className="flex justify-between">
-          <div>
-            {version && version.status !== "ACTIVE" && (
-              <Button
-                type="button"
-                variant="default"
-                onClick={handleActivate}
-                disabled={isActivating}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                <CheckCircle className="mr-2 h-4 w-4" />
-                {isActivating ? "激活中..." : "激活此版本"}
-              </Button>
-            )}
-          </div>
           <div className="flex gap-4">
             <Button
               type="button"

@@ -19,7 +19,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
   Pagination,
   PaginationContent,
@@ -29,12 +28,12 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
-import { Edit, Eye, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react"
+import { Edit, Eye, Plus, Search, CheckCircle } from "lucide-react"
 import { http } from "@/lib/http"
 import { useToast } from "@/hooks/use-toast"
-import type {ConfigVersion} from "@/lib/types/invocation_config"
-import {DataList, Result} from "@/lib/types/result";
-import {formatLocaleTime} from "@/lib/utils/format";
+import type { ConfigVersion } from "@/lib/types/invocation_config"
+import type { DataList, Result } from "@/lib/types/result"
+import { formatLocaleTime } from "@/lib/utils/format"
 
 interface PaginationData {
   page: number
@@ -51,6 +50,7 @@ export function ConfigVersionTable({ configId }: ConfigVersionTableProps) {
   const [versions, setVersions] = useState<ConfigVersion[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+  const [activatingId, setActivatingId] = useState<number | null>(null)
   const [pagination, setPagination] = useState<PaginationData>({
     page: 1,
     pageSize: 10,
@@ -64,9 +64,13 @@ export function ConfigVersionTable({ configId }: ConfigVersionTableProps) {
     try {
       setLoading(true)
 
-      const offset = (page-1) * pagination.pageSize
+      const offset = (page - 1) * pagination.pageSize
 
-      const resp = await http.post<Result<DataList<ConfigVersion>>>(`/invocation-configs/versions/list`, {invID: configId, offset: offset, limit: pagination.pageSize})
+      const resp = await http.post<Result<DataList<ConfigVersion>>>(`/invocation-configs/versions/list`, {
+        invID: configId,
+        offset: offset,
+        limit: pagination.pageSize,
+      })
       const result = resp.data
       if (result.code === 0) {
         setVersions(result.data.list || [])
@@ -74,7 +78,7 @@ export function ConfigVersionTable({ configId }: ConfigVersionTableProps) {
           page: page + 1,
           pageSize: pagination.pageSize,
           total: result.data.total || 0,
-          totalPages: Math.ceil(result.data.total/pagination.pageSize),
+          totalPages: Math.ceil(result.data.total / pagination.pageSize),
         })
       } else {
         toast({
@@ -176,10 +180,6 @@ export function ConfigVersionTable({ configId }: ConfigVersionTableProps) {
     return items
   }
 
-  const handleActivate = (versionID: number) => {
-
-  }
-
   return (
     <Card>
       <CardHeader>
@@ -216,7 +216,8 @@ export function ConfigVersionTable({ configId }: ConfigVersionTableProps) {
               <TableRow>
                 <TableHead>ID</TableHead>
                 <TableHead>版本号</TableHead>
-                <TableHead>温度</TableHead>
+                <TableHead>Temperature</TableHead>
+                <TableHead>TopP</TableHead>
                 <TableHead>最大Token</TableHead>
                 <TableHead>状态</TableHead>
                 <TableHead>更新时间</TableHead>
@@ -248,14 +249,11 @@ export function ConfigVersionTable({ configId }: ConfigVersionTableProps) {
                     <TableCell>
                       <Skeleton className="h-4 w-20" />
                     </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-20" />
-                    </TableCell>
                   </TableRow>
                 ))
               ) : versions.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     暂无版本数据
                   </TableCell>
                 </TableRow>
@@ -265,6 +263,7 @@ export function ConfigVersionTable({ configId }: ConfigVersionTableProps) {
                     <TableCell className="font-medium">{version.id}</TableCell>
                     <TableCell>{version.version}</TableCell>
                     <TableCell>{version.temperature}</TableCell>
+                    <TableCell>{version.topP}</TableCell>
                     <TableCell>{version.maxTokens}</TableCell>
                     <TableCell>
                       <Badge variant={"default"}>
@@ -273,52 +272,24 @@ export function ConfigVersionTable({ configId }: ConfigVersionTableProps) {
                     </TableCell>
                     <TableCell>{formatLocaleTime(version.utime)}</TableCell>
                     <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() =>
-                              router.push(`/dashboard/invocation-config/${configId}/versions/${version.id}`)
-                            }
-                          >
-                            <Eye className="mr-2 h-4 w-4" />
-                            查看详情
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() =>
-                              router.push(`/dashboard/invocation-config/${configId}/versions/${version.id}/edit`)
-                            }
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            编辑
-                          </DropdownMenuItem>
-
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                激活
-                              </DropdownMenuItem>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>确认激活</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  确定要激活配置版本 "{version.version}" 吗？。
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>取消</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleActivate(version.id)}>激活</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => router.push(`/dashboard/invocation-config/${configId}/versions/${version.id}`)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            router.push(`/dashboard/invocation-config/${configId}/versions/${version.id}/edit`)
+                          }
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -330,8 +301,7 @@ export function ConfigVersionTable({ configId }: ConfigVersionTableProps) {
         {!loading && versions.length > 0 && (
           <div className="flex items-center justify-between space-x-2 py-4">
             <div className="text-sm text-muted-foreground">
-              显示 {(pagination.page - 1) * pagination.pageSize + 1} 到{" "}
-              {Math.min(pagination.page * pagination.pageSize, pagination.total)} 条，共 {pagination.total} 条记录
+              共 {pagination.total} 条记录
             </div>
             <Pagination>
               <PaginationContent>
