@@ -1,3 +1,5 @@
+import * as var_module_app from "VAR_MODULE_APP";
+
 export interface InvocationConfig {
   // 调用配置的 ID
   id: number
@@ -12,6 +14,12 @@ export interface InvocationConfig {
   ctime: number
   // 更新时间，毫秒数
   utime: number
+}
+
+export interface Function {
+  name: string
+  // 还是一个 JSON
+  description: string
 }
 
 // 调用大模型的配置的版本
@@ -41,4 +49,10 @@ export interface ConfigVersion {
   status: string
   // 更新时间，毫秒数
   utime: number
+
+  // 大模型使用的 JSON schema 的定义
+  jsonSchema: string
+  // 部分调用要使用的一些特定的属性，也是一个 JSON
+  attributes: string
+  functions: Function[]
 }
