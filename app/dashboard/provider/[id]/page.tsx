@@ -5,15 +5,26 @@ import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Edit, ArrowLeft } from "lucide-react"
+import { Edit, ArrowLeft, Plus, Eye, Trash2 } from "lucide-react"
 import Link from "next/link"
-import { providerApi, modelApi } from "@/lib/mock/model"
-import type { ModelProvider, Model } from "@/lib/types/model"
-import {http} from "@/lib/http";
-import {Result} from "@/lib/types/result";
+import type { ModelProvider } from "@/lib/types/model"
+import { http } from "@/lib/http"
+import type { Result } from "@/lib/types/result"
+import { toast } from "@/hooks/use-toast"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 function providerDetail(id: number) {
-  return http.post<Result<ModelProvider>>("/providers/detail", {id: id})
+  return http.post<Result<ModelProvider>>("/providers/detail", { id: id })
 }
 
 export default function ProviderDetailPage() {
@@ -22,6 +33,7 @@ export default function ProviderDetailPage() {
 
   const [provider, setProvider] = useState<ModelProvider | null>(null)
   const [loading, setLoading] = useState(true)
+  const [deletingModelId, setDeletingModelId] = useState<number | null>(null)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -32,6 +44,11 @@ export default function ProviderDetailPage() {
         setProvider(result)
       } catch (error) {
         console.error("Failed to fetch provider details:", error)
+        toast({
+          title: "错误",
+          description: "获取服务商详情失败",
+          variant: "destructive",
+        })
       } finally {
         setLoading(false)
       }
@@ -39,6 +56,36 @@ export default function ProviderDetailPage() {
 
     fetchData()
   }, [id])
+
+  const handleDeleteModel = async (modelId: number) => {
+    setDeletingModelId(modelId)
+    try {
+      // 这里应该调用真实的删除 API
+      // await modelApi.delete(modelId)
+
+      // 更新本地状态
+      if (provider) {
+        setProvider({
+          ...provider,
+          models: provider.models.filter((model) => model.id !== modelId),
+        })
+      }
+
+      toast({
+        title: "成功",
+        description: "模型删除成功",
+      })
+    } catch (error) {
+      console.error("Failed to delete model:", error)
+      toast({
+        title: "错误",
+        description: "删除模型失败",
+        variant: "destructive",
+      })
+    } finally {
+      setDeletingModelId(null)
+    }
+  }
 
   const maskApiKey = (apiKey: string) => {
     if (apiKey.length <= 8) return apiKey
@@ -110,20 +157,86 @@ export default function ProviderDetailPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>关联模型 ({provider?.models?.length})</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>关联模型 ({provider?.models?.length || 0})</CardTitle>
+              <Button asChild>
+                <Link href={`/dashboard/model/new?pid=${provider.id}`}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  创建模型
+                </Link>
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {provider?.models?.length > 0 ? (
-              <div className="space-y-2">
-                {provider?.models.map((model) => (
-                  <div key={model.id} className="flex items-center justify-between p-2 border rounded">
-                    <span className="font-medium">{model.name}</span>
-                    <Badge variant="secondary">ID: {model.id}</Badge>
+              <div className="space-y-3">
+                {provider.models.map((model) => (
+                  <div
+                    key={model.id}
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3">
+                        <span className="font-medium">{model.name}</span>
+                        <Badge variant="secondary">ID: {model.id}</Badge>
+                      </div>
+                      <div className="mt-2 text-sm text-muted-foreground">
+                        <span>输入价格: ¥{model.inputPrice}/百万token</span>
+                        <span className="ml-4">输出价格: ¥{model.outputPrice}/百万token</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link href={`/dashboard/model/${model.id}`}>
+                          <Eye className="h-4 w-4" />
+                          <span className="sr-only">查看详情</span>
+                        </Link>
+                      </Button>
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link href={`/dashboard/model/${model.id}/edit`}>
+                          <Edit className="h-4 w-4" />
+                          <span className="sr-only">编辑</span>
+                        </Link>
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="sm" disabled={deletingModelId === model.id}>
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">删除</span>
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>确认删除</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              确定要删除模型 "{model.name}" 吗？此操作无法撤销。
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>取消</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteModel(model.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              删除
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-muted-foreground">暂无关联模型</p>
+              <div className="text-center py-8">
+                <p className="text-muted-foreground mb-4">暂无关联模型</p>
+                <Button asChild>
+                  <Link href={`/dashboard/model/new?pid=${provider.id}`}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    创建第一个模型
+                  </Link>
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>

@@ -9,8 +9,7 @@ export interface ModelProvider {
 // 大模型
 export interface Model {
   id: number
-  // Provider 的 ID
-  pid: number
+  provider: ModelProvider
   name: string
   // 多少元/一百万 token
   inputPrice: number
