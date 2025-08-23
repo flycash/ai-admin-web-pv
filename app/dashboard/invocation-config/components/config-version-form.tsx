@@ -41,6 +41,11 @@ interface ConfigVersionFormProps {
   version?: ConfigVersion
 }
 
+async function loadProviderDetail(id: number) {
+  return http.post("/providers/detail", {id: id})
+}
+
+
 export function ConfigVersionForm({ invocationConfigId, version }: ConfigVersionFormProps) {
   const router = useRouter()
   const { toast } = useToast()
@@ -67,10 +72,10 @@ export function ConfigVersionForm({ invocationConfigId, version }: ConfigVersion
   useEffect(() => {
     const fetchProviders = async () => {
       try {
-        const resp = await http.post<Result<DataList<ModelProvider>>>("/providers/all")
+        const resp = await http.post<Result<DataList<ModelProvider>>>("/providers/list", {offset:0, limit: 100})
         const result = resp.data
         if (result.code === 0) {
-          setProviders(result.data?.list || [])
+          setProviders(result?.data?.list || [])
         }
       } catch (error) {
         console.error("获取服务商列表失败:", error)
@@ -82,39 +87,26 @@ export function ConfigVersionForm({ invocationConfigId, version }: ConfigVersion
 
   // 当选择服务商时，更新可用模型列表
   useEffect(() => {
-    if (selectedProvider) {
-      const provider = providers.find((p) => p.id === selectedProvider)
-      if (provider) {
-        setAvailableModels(provider.models)
+    const fetchProviderDetail = async () => {
+      if (selectedProvider) {
+        const pdetail = await http.post<Result<ModelProvider>>("/providers/detail", {id: selectedProvider})
+        const data = pdetail.data?.data
+        setAvailableModels(data?.models || [])
+        if(version?.modelID) {
+          form.reset()
+        }
+      } else {
+        setAvailableModels([])
       }
-    } else {
-      setAvailableModels([])
     }
+    fetchProviderDetail()
   }, [selectedProvider, providers])
 
   // 初始化表单数据
   useEffect(() => {
     if (version) {
-      form.reset({
-        version: version.version,
-        prompt: version.prompt || "",
-        systemPrompt: version.systemPrompt || "",
-        modelID: version.modelID,
-        topP: version.topP,
-        maxTokens: version.maxTokens,
-        temperature: version.temperature,
-      })
-
-      // 根据已选择的模型ID找到对应的服务商
-      if (version.modelID && providers.length > 0) {
-        for (const provider of providers) {
-          const model = provider.models.find((m) => m.id === version.modelID)
-          if (model) {
-            setSelectedProvider(provider.id)
-            break
-          }
-        }
-      }
+      setSelectedProvider(version.modelProviderID)
+      form.reset(version)
     }
   }, [version, form, providers])
 
@@ -123,12 +115,11 @@ export function ConfigVersionForm({ invocationConfigId, version }: ConfigVersion
 
     try {
       const payload = {
-        version: {
           ...values,
           invID: invocationConfigId,
           ...(version && { id: version.id }),
-        },
-      }
+        status: "draft"
+        }
 
       const resp = await http.post<Result<number>>("/invocation-configs/versions/save", payload)
       const result = resp.data

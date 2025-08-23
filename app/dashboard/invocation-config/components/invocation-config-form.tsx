@@ -78,7 +78,7 @@ export function InvocationConfigForm({ id }: InvocationConfigFormProps) {
 
   const getDetail = async () => {
     try {
-      const resp = await http.post<Result<InvocationConfig>>("/invocation-configs/basic", {id: id})
+      const resp = await http.post<Result<InvocationConfig>>("/invocation-configs/detail", {id: id})
       const result = resp.data
       if (result.code === 0) {
         const cfg = result?.data || {} as InvocationConfig

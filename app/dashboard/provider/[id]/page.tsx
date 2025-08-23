@@ -57,36 +57,6 @@ export default function ProviderDetailPage() {
     fetchData()
   }, [id])
 
-  const handleDeleteModel = async (modelId: number) => {
-    setDeletingModelId(modelId)
-    try {
-      // 这里应该调用真实的删除 API
-      // await modelApi.delete(modelId)
-
-      // 更新本地状态
-      if (provider) {
-        setProvider({
-          ...provider,
-          models: provider.models.filter((model) => model.id !== modelId),
-        })
-      }
-
-      toast({
-        title: "成功",
-        description: "模型删除成功",
-      })
-    } catch (error) {
-      console.error("Failed to delete model:", error)
-      toast({
-        title: "错误",
-        description: "删除模型失败",
-        variant: "destructive",
-      })
-    } finally {
-      setDeletingModelId(null)
-    }
-  }
-
   const maskApiKey = (apiKey: string) => {
     if (apiKey.length <= 8) return apiKey
     return apiKey.substring(0, 8) + "*".repeat(Math.min(apiKey.length - 8, 15))
@@ -198,31 +168,6 @@ export default function ProviderDetailPage() {
                           <span className="sr-only">编辑</span>
                         </Link>
                       </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="sm" disabled={deletingModelId === model.id}>
-                            <Trash2 className="h-4 w-4" />
-                            <span className="sr-only">删除</span>
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>确认删除</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              确定要删除模型 "{model.name}" 吗？此操作无法撤销。
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>取消</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDeleteModel(model.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              删除
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
                     </div>
                   </div>
                 ))}
