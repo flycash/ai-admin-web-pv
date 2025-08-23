@@ -12,4 +12,8 @@ export interface Model {
   // Provider 的 ID
   pid: number
   name: string
+  // 多少元/一百万 token
+  inputPrice: number
+  // 多少元/一百万 token
+  outputPrice: number
 }
