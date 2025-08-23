@@ -163,7 +163,7 @@ export default function ConfigVersionDetailPage({
           <p className="text-muted-foreground">配置版本详细信息</p>
         </div>
         <div className="flex gap-2">
-          {version.status !== "ACTIVE" && (
+          {version.status !== "active" && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button disabled={version.status ==="active"} className="bg-green-600 hover:bg-green-700">

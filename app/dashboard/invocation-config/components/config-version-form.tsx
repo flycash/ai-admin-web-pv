@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, Info } from "lucide-react"
+import { Info } from "lucide-react"
 import { http } from "@/lib/http"
 import { useToast } from "@/hooks/use-toast"
 import type { ConfigVersion} from "@/lib/types/invocation_config"

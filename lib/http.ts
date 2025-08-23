@@ -32,7 +32,7 @@ http.interceptors.response.use(
       // 清除用户信息并跳转到登录页
       localStorage.removeItem("user_info")
       localStorage.removeItem("is_logged_in")
-      window.location.href = "/mock/login"
+      window.location.href = "/login"
       return Promise.reject(error)
     }
 

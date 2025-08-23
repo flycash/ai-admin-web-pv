@@ -2,6 +2,7 @@
 export interface ModelProvider {
   id: number
   name: string
+  apiKey: string
   models: Model[]
 }
 

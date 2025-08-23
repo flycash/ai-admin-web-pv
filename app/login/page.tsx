@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2 } from "lucide-react"
 import { useAuth } from "@/components/auth-provider"
+import {http} from "@/lib/http";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("")
@@ -44,14 +45,14 @@ export default function LoginPage() {
     setError("")
 
     try {
-      const success = await login("admin", "admin123")
+      const success = await http.post("/mock/login", {})
       if (success) {
         router.push("/dashboard")
       } else {
-        setError("自动登录失败")
+        setError("模拟登录失败")
       }
     } catch (error) {
-      setError("自动登录失败，请稍后重试")
+      setError("模拟登录失败，请稍后重试")
     } finally {
       setLoading(false)
     }
@@ -114,10 +115,10 @@ export default function LoginPage() {
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    自动登录中...
+                    模拟登录中...
                   </>
                 ) : (
-                  "自动登录 (admin/admin123)"
+                  "模拟登录 (测试专用)"
                 )}
               </Button>
             </div>

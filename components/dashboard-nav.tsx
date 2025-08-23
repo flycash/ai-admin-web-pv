@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Sparkles, Settings } from "lucide-react"
+import { Sparkles, Settings, Cpu, Server } from "lucide-react"
 import { usePathname } from "next/navigation"
 
 interface DashboardNavProps {
@@ -15,6 +15,11 @@ export function DashboardNav({ className, collapsed = false }: DashboardNavProps
   const pathname = usePathname()
 
   const navItems = [
+    {
+      title: "模型服务商",
+      href: "/dashboard/provider",
+      icon: <Server className="h-5 w-5" />,
+    },
     {
       title: "业务配置",
       href: "/dashboard/biz-config",
