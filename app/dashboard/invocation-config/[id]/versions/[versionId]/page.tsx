@@ -7,14 +7,6 @@ import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Edit, CheckCircle } from "lucide-react"
 import Link from "next/link"
 import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -28,7 +20,7 @@ import {
 import { http } from "@/lib/http"
 import { useToast } from "@/hooks/use-toast"
 import { Skeleton } from "@/components/ui/skeleton"
-import {formatLocaleTime} from "@/lib/utils/format"
+import { formatLocaleTime } from "@/lib/utils/format"
 import type { ConfigVersion } from "@/lib/types/invocation_config"
 import type { Result } from "@/lib/types/result"
 
@@ -46,7 +38,9 @@ export default function ConfigVersionDetailPage({
   useEffect(() => {
     const fetchVersion = async () => {
       try {
-        const resp = await http.post<Result<ConfigVersion>>(`/invocation-configs/versions/detail`, {id: parseInt(versionId)})
+        const resp = await http.post<Result<ConfigVersion>>(`/invocation-configs/versions/detail`, {
+          id: Number.parseInt(versionId),
+        })
         const result = resp.data
 
         if (result.code === 0) {
@@ -77,7 +71,9 @@ export default function ConfigVersionDetailPage({
     if (!version) return
 
     try {
-      const resp = await http.post<Result<void>>(`/invocation-configs/versions/activate`, { id: parseInt(versionId) })
+      const resp = await http.post<Result<void>>(`/invocation-configs/versions/activate`, {
+        id: Number.parseInt(versionId),
+      })
       const result = resp.data
 
       if (result.code === 0) {
@@ -156,9 +152,7 @@ export default function ConfigVersionDetailPage({
         <div className="flex-1">
           <div className="flex items-center gap-3 mt-2">
             <h1 className="text-3xl font-bold tracking-tight">{version.version}</h1>
-            <Badge variant={ "default"}>
-              {version.status}
-            </Badge>
+            <Badge variant={"default"}>{version.status}</Badge>
           </div>
           <p className="text-muted-foreground">配置版本详细信息</p>
         </div>
@@ -166,7 +160,7 @@ export default function ConfigVersionDetailPage({
           {version.status !== "active" && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button disabled={version.status ==="active"} className="bg-green-600 hover:bg-green-700">
+                <Button disabled={version.status === "active"} className="bg-green-600 hover:bg-green-700">
                   <CheckCircle className="mr-2 h-4 w-4" />
                   激活
                 </Button>
@@ -180,9 +174,7 @@ export default function ConfigVersionDetailPage({
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>取消</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleActivate}>
-                    确认激活
-                  </AlertDialogAction>
+                  <AlertDialogAction onClick={handleActivate}>确认激活</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
@@ -209,9 +201,7 @@ export default function ConfigVersionDetailPage({
             <div>
               <label className="text-sm font-medium">状态</label>
               <div className="mt-1">
-                <Badge variant={ "default"}>
-                  {version.status }
-                </Badge>
+                <Badge variant={"default"}>{version.status}</Badge>
               </div>
             </div>
             <div>
@@ -276,6 +266,75 @@ export default function ConfigVersionDetailPage({
           </CardHeader>
           <CardContent>
             <pre className="whitespace-pre-wrap text-sm bg-muted p-4 rounded-md font-mono">{version.prompt}</pre>
+          </CardContent>
+        </Card>
+      )}
+
+      {version.jsonSchema && (
+        <Card>
+          <CardHeader>
+            <CardTitle>JSON Schema</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <pre className="whitespace-pre-wrap text-sm bg-muted p-4 rounded-md font-mono">{version.jsonSchema}</pre>
+          </CardContent>
+        </Card>
+      )}
+
+      {version.attributes && Object.keys(version.attributes).length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>属性配置</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {Object.entries(version.attributes).map(([key, value], index) => (
+              <Card key={index} className="border-dashed">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">
+                    属性 {index + 1}: {key}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">属性键</label>
+                    <p className="text-sm text-muted-foreground mt-1 font-mono">{key}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">属性值</label>
+                    <div className="mt-1">
+                      <pre className="text-sm bg-muted p-2 rounded text-muted-foreground font-mono whitespace-pre-wrap">
+                        {typeof value === "string" ? value : JSON.stringify(value, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {version.functions && version.functions.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>函数定义</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {version.functions.map((func, index) => (
+              <Card key={index} className="border-dashed">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">
+                    函数{index + 1}: {func.name}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="mt-3">
+                    <label className="text-sm font-medium">函数定义</label>
+                    <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">{func.definition}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </CardContent>
         </Card>
       )}

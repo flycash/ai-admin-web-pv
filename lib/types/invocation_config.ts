@@ -19,7 +19,7 @@ export interface InvocationConfig {
 export interface Function {
   name: string
   // 还是一个 JSON
-  description: string
+  definition: string
 }
 
 // 调用大模型的配置的版本
