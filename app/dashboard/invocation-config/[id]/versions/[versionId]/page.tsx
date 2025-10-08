@@ -4,7 +4,7 @@ import { use, useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Edit, CheckCircle } from "lucide-react"
+import {ArrowLeft, Edit, CheckCircle, Copy} from "lucide-react"
 import Link from "next/link"
 import {
   AlertDialog,
@@ -255,6 +255,7 @@ export default function ConfigVersionDetailPage({
           </CardHeader>
           <CardContent>
             <pre className="whitespace-pre-wrap text-sm bg-muted p-4 rounded-md font-mono">{version.systemPrompt}</pre>
+            <div className={"mt-1 text-gray-500"}><Button onClick={() => navigator.clipboard.writeText(version.systemPrompt)} variant={"ghost"}><Copy /></Button></div>
           </CardContent>
         </Card>
       )}
@@ -266,50 +267,9 @@ export default function ConfigVersionDetailPage({
           </CardHeader>
           <CardContent>
             <pre className="whitespace-pre-wrap text-sm bg-muted p-4 rounded-md font-mono">{version.prompt}</pre>
-          </CardContent>
-        </Card>
-      )}
-
-      {version.jsonSchema && (
-        <Card>
-          <CardHeader>
-            <CardTitle>JSON Schema</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <pre className="whitespace-pre-wrap text-sm bg-muted p-4 rounded-md font-mono">{version.jsonSchema}</pre>
-          </CardContent>
-        </Card>
-      )}
-
-      {version.attributes && Object.keys(version.attributes).length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>属性配置</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {Object.entries(version.attributes).map(([key, value], index) => (
-              <Card key={index} className="border-dashed">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">
-                    属性 {index + 1}: {key}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium">属性键</label>
-                    <p className="text-sm text-muted-foreground mt-1 font-mono">{key}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">属性值</label>
-                    <div className="mt-1">
-                      <pre className="text-sm bg-muted p-2 rounded text-muted-foreground font-mono whitespace-pre-wrap">
-                        {typeof value === "string" ? value : JSON.stringify(value, null, 2)}
-                      </pre>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+            <div className={"mt-1 text-gray-500"}><Button
+              onClick={() => navigator.clipboard.writeText(version?.prompt)} variant={"ghost"}><Copy/></Button>
+            </div>
           </CardContent>
         </Card>
       )}

@@ -22,6 +22,7 @@ import type { DataList, Result } from "@/lib/types/result"
 
 const functionSchema = z.object({
   name: z.string().min(1, "函数名称不能为空"),
+  nextInvCfgID: z.number().min(0, "下一个调用配置ID必须大于等于0").optional(),
   definition: z.string().min(1, "函数定义不能为空"),
 })
 
@@ -44,7 +45,6 @@ const formSchema = z.object({
   topP: z.number().min(0).max(1),
   maxTokens: z.number().min(1).max(100000),
   temperature: z.number().min(0).max(1),
-  jsonSchema: z.string().optional(),
   attributes: z.array(attributeSchema).optional(),
   functions: z.array(functionSchema).optional(),
 })
@@ -54,9 +54,6 @@ interface ConfigVersionFormProps {
   version?: ConfigVersion
 }
 
-async function loadProviderDetail(id: number) {
-  return http.post("/providers/detail", { id: id })
-}
 
 export function ConfigVersionForm({ invocationConfigId, version }: ConfigVersionFormProps) {
   const router = useRouter()
@@ -76,7 +73,6 @@ export function ConfigVersionForm({ invocationConfigId, version }: ConfigVersion
       topP: 0.9,
       maxTokens: 4096,
       temperature: 0.7,
-      jsonSchema: "",
       attributes: [],
       functions: [],
     },
@@ -138,7 +134,6 @@ export function ConfigVersionForm({ invocationConfigId, version }: ConfigVersion
   useEffect(() => {
     if (version) {
       setSelectedProvider(version.modelProviderID)
-
       // 将 attributes 对象转换为键值对数组
       const attributesArray = version.attributes
         ? Object.entries(version.attributes).map(([key, value]) => ({
@@ -207,7 +202,7 @@ export function ConfigVersionForm({ invocationConfigId, version }: ConfigVersion
           title: "保存成功",
           description: version ? "配置版本更新成功" : "配置版本创建成功",
         })
-        router.push(`/dashboard/invocation-config/${invocationConfigId}`)
+        router.push(`/dashboard/invocation-config/${invocationConfigId}/versions/${result.data}`)
       } else {
         toast({
           title: "保存失败",
@@ -389,9 +384,10 @@ export function ConfigVersionForm({ invocationConfigId, version }: ConfigVersion
               name="systemPrompt"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>系统提示词</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="你是一个有用的助手..." className="min-h-[100px] font-mono" {...field} />
+                    <Textarea placeholder="你是一个有用的助手..."
+                              rows={20}
+                              className="min-h-[100px] font-mono" {...field} />
                   </FormControl>
                   <FormDescription>定义 AI 行为和角色的系统提示词。</FormDescription>
                   <FormMessage />
@@ -414,10 +410,10 @@ export function ConfigVersionForm({ invocationConfigId, version }: ConfigVersion
               name="prompt"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>提示词模板</FormLabel>
                   <FormControl>
                     <Textarea
                       placeholder="请根据以下信息生成回答：&#10;用户姓名：{{.Name}}&#10;用户问题：{{.Question}}&#10;上下文：{{.Context}}"
+                      rows={20}
                       className="min-h-[200px] font-mono"
                       {...field}
                     />
@@ -439,99 +435,73 @@ export function ConfigVersionForm({ invocationConfigId, version }: ConfigVersion
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>JSON Schema</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <FormField
-              control={form.control}
-              name="jsonSchema"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>JSON Schema 定义</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder='{"type": "object", "properties": {...}}'
-                      className="min-h-[150px] font-mono"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription>定义大模型输出的 JSON 结构规范。</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              属性配置
-              <Button type="button" variant="outline" size="sm" onClick={() => appendAttribute({ key: "", value: "" })}>
-                <Plus className="h-4 w-4 mr-2" />
-                添加属性
-              </Button>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {attributeFields.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <p>暂无属性配置</p>
-                <p className="text-sm">点击"添加属性"按钮开始添加键值对</p>
-              </div>
-            ) : (
-              attributeFields.map((field, index) => (
-                <Card key={field.id} className="border-dashed">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm">属性 {index + 1}</CardTitle>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => removeAttribute(index)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name={`attributes.${index}.key`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>属性键</FormLabel>
-                          <FormControl>
-                            <Input placeholder="属性名称" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name={`attributes.${index}.value`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>属性值</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder='支持 JSON 格式，如: "string" 或 {"key": "value"} 或 123'
-                              className="min-h-[80px] font-mono"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormDescription className="text-xs">
-                            支持字符串、数字、布尔值、对象等任意 JSON 格式
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </CardContent>
-        </Card>
+        {/*<Card>*/}
+        {/*  <CardHeader>*/}
+        {/*    <CardTitle className="flex items-center justify-between">*/}
+        {/*      属性配置*/}
+        {/*      <Button type="button" variant="outline" size="sm" onClick={() => appendAttribute({ key: "", value: "" })}>*/}
+        {/*        <Plus className="h-4 w-4 mr-2" />*/}
+        {/*        添加属性*/}
+        {/*      </Button>*/}
+        {/*    </CardTitle>*/}
+        {/*  </CardHeader>*/}
+        {/*  <CardContent className="space-y-4">*/}
+        {/*    {attributeFields.length === 0 ? (*/}
+        {/*      <div className="text-center py-8 text-muted-foreground">*/}
+        {/*        <p>暂无属性配置</p>*/}
+        {/*        <p className="text-sm">点击"添加属性"按钮开始添加键值对</p>*/}
+        {/*      </div>*/}
+        {/*    ) : (*/}
+        {/*      attributeFields.map((field, index) => (*/}
+        {/*        <Card key={field.id} className="border-dashed">*/}
+        {/*          <CardHeader className="pb-3">*/}
+        {/*            <div className="flex items-center justify-between">*/}
+        {/*              <CardTitle className="text-sm">属性 {index + 1}</CardTitle>*/}
+        {/*              <Button type="button" variant="ghost" size="sm" onClick={() => removeAttribute(index)}>*/}
+        {/*                <Trash2 className="h-4 w-4" />*/}
+        {/*              </Button>*/}
+        {/*            </div>*/}
+        {/*          </CardHeader>*/}
+        {/*          <CardContent className="grid grid-cols-2 gap-4">*/}
+        {/*            <FormField*/}
+        {/*              control={form.control}*/}
+        {/*              name={`attributes.${index}.key`}*/}
+        {/*              render={({ field }) => (*/}
+        {/*                <FormItem>*/}
+        {/*                  <FormLabel>属性键</FormLabel>*/}
+        {/*                  <FormControl>*/}
+        {/*                    <Input placeholder="属性名称" {...field} />*/}
+        {/*                  </FormControl>*/}
+        {/*                  <FormMessage />*/}
+        {/*                </FormItem>*/}
+        {/*              )}*/}
+        {/*            />*/}
+        {/*            <FormField*/}
+        {/*              control={form.control}*/}
+        {/*              name={`attributes.${index}.value`}*/}
+        {/*              render={({ field }) => (*/}
+        {/*                <FormItem>*/}
+        {/*                  <FormLabel>属性值</FormLabel>*/}
+        {/*                  <FormControl>*/}
+        {/*                    <Textarea*/}
+        {/*                      placeholder='支持 JSON 格式，如: "string" 或 {"key": "value"} 或 123'*/}
+        {/*                      className="min-h-[80px] font-mono"*/}
+        {/*                      {...field}*/}
+        {/*                    />*/}
+        {/*                  </FormControl>*/}
+        {/*                  <FormDescription className="text-xs">*/}
+        {/*                    支持字符串、数字、布尔值、对象等任意 JSON 格式*/}
+        {/*                  </FormDescription>*/}
+        {/*                  <FormMessage />*/}
+        {/*                </FormItem>*/}
+        {/*              )}*/}
+        {/*            />*/}
+        {/*          </CardContent>*/}
+        {/*        </Card>*/}
+        {/*      ))*/}
+        {/*    )}*/}
+        {/*  </CardContent>*/}
+        {/*</Card>*/}
 
         <Card>
           <CardHeader>
@@ -541,7 +511,7 @@ export function ConfigVersionForm({ invocationConfigId, version }: ConfigVersion
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => appendFunction({ name: "", definition: "" })}
+                onClick={() => appendFunction({ name: "", nextInvCfgID: 0, definition: "" })}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 添加函数
@@ -579,14 +549,17 @@ export function ConfigVersionForm({ invocationConfigId, version }: ConfigVersion
                         </FormItem>
                       )}
                     />
+
                     <FormField
                       control={form.control}
                       name={`functions.${index}.definition`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>函数描述</FormLabel>
+                          <FormLabel>函数定义</FormLabel>
                           <FormControl>
-                            <Textarea placeholder="函数的定义，JSON 格式..." className="min-h-[80px]" {...field} />
+                            <Textarea placeholder="函数的定义，JSON 格式..."
+                                      rows={15}
+                                      className="min-h-[80px]" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

@@ -77,6 +77,9 @@ export function InvocationConfigForm({ id }: InvocationConfigFormProps) {
   }
 
   const getDetail = async () => {
+    if (!id) {
+      return
+    }
     try {
       const resp = await http.post<Result<InvocationConfig>>("/invocation-configs/detail", {id: id})
       const result = resp.data
@@ -104,7 +107,7 @@ export function InvocationConfigForm({ id }: InvocationConfigFormProps) {
   useEffect(() => {
     fetchBizConfigs()
     getDetail()
-  }, [toast])
+  }, [])
 
   const onSubmit = async (values: FormData) => {
     setLoading(true)
@@ -117,15 +120,14 @@ export function InvocationConfigForm({ id }: InvocationConfigFormProps) {
         bizID: values.bizID,
       }
 
-      const resp = await http.post<Result<number>>("/invocation-configs/save", { cfg })
+      const resp = await http.post<Result<number>>("/invocation-configs/save", cfg)
       const result = resp.data
-
       if (result.code === 0) {
         toast({
           title: "保存成功",
           description: "调用配置保存成功",
         })
-        router.push("/dashboard/invocation-config")
+        router.push(`/dashboard/invocation-config/${result.data}`)
       } else {
         toast({
           title: "保存失败",
