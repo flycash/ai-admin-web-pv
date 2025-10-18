@@ -26,11 +26,6 @@ const functionSchema = z.object({
   definition: z.string().min(1, "函数定义不能为空"),
 })
 
-const attributeSchema = z.object({
-  key: z.string().min(1, "属性键不能为空"),
-  value: z.string().min(1, "属性值不能为空"),
-})
-
 const formSchema = z.object({
   version: z.string().min(1, {
     message: "版本号不能为空。",
@@ -42,10 +37,9 @@ const formSchema = z.object({
   modelID: z.number().min(1, {
     message: "请选择大模型。",
   }),
-  topP: z.number().min(0).max(1),
+  topP: z.number().min(-0.01).max(1),
   maxTokens: z.number().min(1).max(100000),
-  temperature: z.number().min(0).max(1),
-  attributes: z.array(attributeSchema).optional(),
+  temperature: z.number().min(-0.01).max(1),
   functions: z.array(functionSchema).optional(),
 })
 
@@ -73,7 +67,6 @@ export function ConfigVersionForm({ invocationConfigId, version }: ConfigVersion
       topP: 0.9,
       maxTokens: 4096,
       temperature: 0.7,
-      attributes: [],
       functions: [],
     },
   })
@@ -85,15 +78,6 @@ export function ConfigVersionForm({ invocationConfigId, version }: ConfigVersion
   } = useFieldArray({
     control: form.control,
     name: "functions",
-  })
-
-  const {
-    fields: attributeFields,
-    append: appendAttribute,
-    remove: removeAttribute,
-  } = useFieldArray({
-    control: form.control,
-    name: "attributes",
   })
 
   // 获取大模型服务商列表
@@ -134,61 +118,20 @@ export function ConfigVersionForm({ invocationConfigId, version }: ConfigVersion
   useEffect(() => {
     if (version) {
       setSelectedProvider(version.modelProviderID)
-      // 将 attributes 对象转换为键值对数组
-      const attributesArray = version.attributes
-        ? Object.entries(version.attributes).map(([key, value]) => ({
-          key,
-          value: typeof value === "string" ? value : JSON.stringify(value),
-        }))
-        : []
-
       form.reset({
         ...version,
-        attributes: attributesArray,
         functions: version.functions || [],
       })
     }
   }, [version, form, providers])
 
-  // 验证属性键的唯一性
-  const validateAttributeKeys = (attributes: { key: string; value: string }[]) => {
-    const keys = attributes.map((attr) => attr.key).filter((key) => key.trim() !== "")
-    const uniqueKeys = new Set(keys)
-    return keys.length === uniqueKeys.size
-  }
-
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    // 验证属性键的唯一性
-    if (values.attributes && !validateAttributeKeys(values.attributes)) {
-      toast({
-        title: "验证失败",
-        description: "属性键不能重复",
-        variant: "destructive",
-      })
-      return
-    }
-
     setIsLoading(true)
 
     try {
-      // 将属性数组转换为对象
-      const attributesObject: Record<string, any> = {}
-      if (values.attributes) {
-        values.attributes.forEach((attr) => {
-          if (attr.key.trim() && attr.value.trim()) {
-            try {
-              // 尝试解析为 JSON，如果失败则作为字符串处理
-              attributesObject[attr.key] = JSON.parse(attr.value)
-            } catch {
-              attributesObject[attr.key] = attr.value
-            }
-          }
-        })
-      }
 
       const payload = {
         ...values,
-        attributes: attributesObject,
         invID: invocationConfigId,
         ...(version && { id: version.id }),
         status: "draft",
@@ -318,14 +261,14 @@ export function ConfigVersionForm({ invocationConfigId, version }: ConfigVersion
                     <FormLabel>温度 (Temperature): {field.value}</FormLabel>
                     <FormControl>
                       <Slider
-                        min={0}
+                        min={-0.01}
                         max={1}
                         step={0.01}
                         value={[field.value]}
                         onValueChange={(value) => field.onChange(value[0])}
                       />
                     </FormControl>
-                    <FormDescription>控制随机性：较低的值更确定，较高的值更有创意。</FormDescription>
+                    <FormDescription>控制随机性：较低的值更确定，较高的值更有创意。负数代表该模型不支持本参数。</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -338,14 +281,14 @@ export function ConfigVersionForm({ invocationConfigId, version }: ConfigVersion
                     <FormLabel>Top P: {field.value}</FormLabel>
                     <FormControl>
                       <Slider
-                        min={0}
+                        min={-0.01}
                         max={1}
                         step={0.01}
                         value={[field.value]}
                         onValueChange={(value) => field.onChange(value[0])}
                       />
                     </FormControl>
-                    <FormDescription>通过核采样控制多样性：0.5 意味着考虑一半的可能性加权选项。</FormDescription>
+                    <FormDescription>通过核采样控制多样性：0.5 意味着考虑一半的可能性加权选项。负数代表该模型不支持本参数。</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
